@@ -6,6 +6,8 @@
 - 服务器来源自动合并：面板里手动添加的 SSH 主机 + `dsh-remote` 已保存主机 + `~/.ssh/config`。
 - 手动添加支持**密码**或**私钥**（粘贴私钥内容或选择私钥文件），保存后立即开始采集。
 - 每台服务器一张卡片：CPU、内存、磁盘（显示**已用 / 总容量**与峰值挂载点）、负载、运行时间、SSH 延迟，以及最近 40 次 CPU 采样的迷你曲线。
+- **NVIDIA 显卡**：名称、占用率、显存、算力（CUDA Compute Capability）；一张卡里有多张 GPU 时逐张显示。
+- **卡片右上角可直接删除/移除服务器**：手动添加的会真正删除记录和私钥；来自 dsh-remote / `~/.ssh/config` 的只从监控列表隐藏，不会改动原配置，可在“添加服务器”弹窗里恢复。
 - **认证失败的主机默认隐藏**，避免刷屏；可在“添加服务器”弹窗里修改或删除。
 - 默认 5 秒刷新，可切换 3/5/10/30 秒或手动刷新；页面隐藏时暂停轮询。
 
@@ -25,7 +27,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.2.0.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.2.2.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -34,12 +36,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.2.0.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.2.2.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.2.0.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.2.2.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -64,6 +66,21 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 | 主机密钥指纹（TOFU） | `~/.dsh/server-monitor/known-hosts.json` | 默认 |
 
 密码和私钥只保存在 Host 进程与上述本地文件中，**不会返回给浏览器**；写入接口还需要页面内注入的一次性令牌。
+
+## 删除 / 隐藏服务器
+
+卡片右上角的垃圾桶按钮：
+
+- **手动添加的服务器**：真正删除 `targets.json` 里的记录，粘贴的私钥文件一并删除。
+- **dsh-remote / `~/.ssh/config` 的服务器**：只写入 `~/.dsh/server-monitor/hidden.json`，从监控列表隐藏，不会修改这些原始配置。
+- 打开“添加服务器”弹窗，底部“已隐藏的服务器”可以随时恢复。
+
+## 显卡信息
+
+- Linux 远程主机和 Windows/Linux 本机都通过 `nvidia-smi` 读取，不需要额外部署 agent。
+- 每张 GPU 显示：**显卡名称、GPU 利用率、显存已用 / 总量、算力值**。
+- 算力值优先取 `nvidia-smi` 的 `compute_cap`（CUDA Compute Capability，例如 `8.0`）；老驱动不提供时按 GPU 型号推断（例如 P100 = `6.0`）。它不是 TFLOPS。
+- 没有 NVIDIA 驱动或没有 GPU 的主机不显示 GPU 区块。
 
 ## 服务器从哪来
 
@@ -106,6 +123,7 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 
 - 远程只执行一条 **只读** POSIX 命令（`hostname`、`/proc/stat`、`/proc/meminfo`、`df`），不写文件、不调用 sudo。
 - 手动添加的密码以明文保存在 `targets.json`（权限 `0600`）；私钥单独存文件（`0600`）。如果介意明文密码，请改用私钥认证。
+- 隐藏列表保存在 `hidden.json`（权限 `0600`），删除手动目标时会同时删除其私钥文件。
 - 浏览器只能拿到 `id / name / host / port / username / auth / hasPassword / hasKey`，没有密码、口令或私钥路径。
 - 添加/删除接口需要页面加载时注入的随机令牌，并校验 `x-monitor-token`。
 - 主机密钥采用 **首次信任（TOFU）**：第一次连接时把 SHA-256 指纹写到 `~/.dsh/server-monitor/known-hosts.json`，之后指纹变化会拒绝连接。
@@ -146,6 +164,7 @@ lib/machines.js         合并手动目标、dsh-remote 注册表与 ~/.ssh/conf
 lib/ssh.js              SSH 连接池、主机密钥 TOFU、错误分类
 lib/collect-local.js    本机 CPU / 内存 / 磁盘
 lib/collect-remote.js   Linux 远程采集脚本与解析
+lib/gpu.js              nvidia-smi 输出解析（名称 / 占用 / 显存 / 算力）
 lib/client.js           浏览器半侧：左侧栏入口 + 全局主面板
 assets/dashboard.html   仪表盘页面（零依赖 HTML/CSS/JS，含添加服务器弹窗）
 icon.svg                插件页图标

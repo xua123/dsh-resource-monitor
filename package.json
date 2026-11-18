@@ -1,7 +1,7 @@
 {
   "name": "dsh-resource-monitor",
-  "version": "0.2.0",
-  "description": "Server resource dashboard for DeepSeek Harness: live CPU / memory / disk usage for the local host and SSH servers you add in the panel, with password or private-key auth.",
+  "version": "0.2.2",
+  "description": "Server resource dashboard for DeepSeek Harness: live CPU / memory / disk / NVIDIA GPU usage for the local host and SSH servers you add in the panel, with password or private-key auth.",
   "icon": "icon.svg",
   "author": "xua123",
   "repository": {

@@ -287,6 +287,40 @@
   }
   .target-row .danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
   .target-empty { padding: 10px 2px; font-size: 11px; color: var(--muted); }
+  .target-row .restore {
+    flex: none; border: 0; background: transparent; color: var(--accent);
+    font: inherit; cursor: pointer; padding: 3px 5px; border-radius: 5px;
+  }
+  .target-row .restore:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+  .card-remove {
+    flex: none; width: 26px; height: 26px; display: grid; place-items: center;
+    margin: -3px -4px 0 0; border: 1px solid transparent; border-radius: 7px;
+    background: transparent; color: var(--muted); cursor: pointer;
+    opacity: .55; transition: opacity .15s ease, color .15s ease, background .15s ease;
+  }
+  .card:hover .card-remove, .card-remove:focus-visible { opacity: 1; }
+  .card-remove:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); border-color: color-mix(in srgb, var(--danger) 25%, var(--border)); }
+  .card-remove svg { width: 14px; height: 14px; }
+
+  .gpu-list {
+    margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .gpu-title { font-size: 10px; color: var(--muted); letter-spacing: .35px; }
+  .gpu-top { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+  .gpu-name {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 11px; font-weight: 600; color: var(--text-2);
+  }
+  .gpu-util { flex: none; font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .gpu-chip {
+    flex: none; padding: 0 5px; border-radius: 5px; line-height: 16px;
+    font-size: 10px; color: color-mix(in srgb, var(--accent) 82%, var(--text));
+    background: color-mix(in srgb, var(--accent) 10%, var(--card));
+    border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+  }
+  .gpu-note { margin-top: 3px; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   @media (max-width: 640px) {
     .top-inner { padding: 12px 14px 10px; }
@@ -395,6 +429,10 @@
           <h3>已添加的服务器</h3>
           <div id="target-rows"></div>
         </div>
+        <div class="target-list">
+          <h3>已隐藏的服务器</h3>
+          <div id="hidden-rows"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -435,6 +473,7 @@
     targetClose: document.getElementById('target-close'),
     targetForm: document.getElementById('target-form'),
     targetRows: document.getElementById('target-rows'),
+    hiddenRows: document.getElementById('hidden-rows'),
     targetMsg: document.getElementById('target-msg'),
     authSelect: document.querySelector('#target-form select[name="auth"]'),
     authPassword: document.getElementById('auth-password'),
@@ -614,6 +653,18 @@
     hostLine.title = hostText
     body.appendChild(hostLine)
     head.appendChild(body)
+    if (entry.kind !== 'local') {
+      var remove = el('button', 'card-remove')
+      remove.type = 'button'
+      remove.title = entry.manualId ? '删除这台服务器' : '从监控列表移除（不修改 dsh-remote / ssh 配置）'
+      remove.setAttribute('aria-label', '删除服务器')
+      remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>'
+      remove.addEventListener('click', function (event) {
+        event.stopPropagation()
+        removeServer(entry)
+      })
+      head.appendChild(remove)
+    }
     node.appendChild(head)
 
     if (connecting) {
@@ -663,6 +714,35 @@
         diskNote += (diskNote ? ' · ' : '') + '挂载 ' + disk.mount
       }
       metrics.appendChild(metric('磁盘', disk.percent, { text: diskNote || '—' }, diskTone))
+
+      if (entry.gpus && entry.gpus.length) {
+        var gpuWrap = el('div', 'gpu-list')
+        gpuWrap.appendChild(el('div', 'gpu-title', entry.gpus.length > 1 ? 'GPU · ' + entry.gpus.length + ' 张' : 'GPU'))
+        entry.gpus.forEach(function (gpu, index) {
+          var gpuRow = el('div', 'gpu-row')
+          var gpuTop = el('div', 'gpu-top')
+          var gpuName = el('span', 'gpu-name', gpu.name || ('GPU ' + index))
+          gpuName.title = gpu.name || ''
+          gpuTop.appendChild(gpuName)
+          gpuTop.appendChild(el('span', 'gpu-util', fmtPct(gpu.utilization)))
+          if (gpu.computeCap) gpuTop.appendChild(el('span', 'gpu-chip', '算力 ' + gpu.computeCap))
+          gpuRow.appendChild(gpuTop)
+          var gpuBar = el('div', 'bar')
+          var gpuFill = el('i', toneFor(gpu.utilization))
+          gpuFill.style.width = (clampPct(gpu.utilization) === null ? 0 : clampPct(gpu.utilization)) + '%'
+          gpuBar.appendChild(gpuFill)
+          gpuRow.appendChild(gpuBar)
+          var gpuNote = (gpu.memoryUsed !== null && gpu.memoryUsed !== undefined && gpu.memoryTotal)
+            ? fmtBytes(gpu.memoryUsed) + ' / ' + fmtBytes(gpu.memoryTotal)
+            : '显存 —'
+          if (gpu.memoryPercent !== null && gpu.memoryPercent !== undefined) {
+            gpuNote += ' · ' + fmtPct(gpu.memoryPercent)
+          }
+          gpuRow.appendChild(el('div', 'gpu-note', gpuNote))
+          gpuWrap.appendChild(gpuRow)
+        })
+        metrics.appendChild(gpuWrap)
+      }
       node.appendChild(metrics)
     }
 
@@ -742,6 +822,9 @@
     if (data.summary && data.summary.hiddenAuth > 0) {
       parts.push('已隐藏 ' + data.summary.hiddenAuth + ' 台认证失败')
     }
+    if (data.summary && data.summary.hiddenRemoved > 0) {
+      parts.push('已移除 ' + data.summary.hiddenRemoved + ' 台')
+    }
     parts.push(state.interval > 0 ? '每 ' + Math.round(state.interval / 1000) + ' 秒刷新' : '手动刷新')
     parts.push('更新于 ' + fmtRelative(state.lastUpdate))
     els.summary.innerHTML = parts.join(' · ')
@@ -752,6 +835,9 @@
     if (offlineNames.length > 0) footParts.push('离线：' + offlineNames.join('、'))
     if (data.summary && data.summary.hiddenAuth > 0) {
       footParts.push('已隐藏 ' + data.summary.hiddenAuth + ' 台认证失败（可在“添加服务器”里修改）')
+    }
+    if (data.summary && data.summary.hiddenRemoved > 0) {
+      footParts.push('已移除 ' + data.summary.hiddenRemoved + ' 台（可在“添加服务器”里恢复）')
     }
     els.foot.textContent = footParts.join(' · ')
   }
@@ -820,12 +906,100 @@
       })
   }
 
+  function hiddenRow(entry) {
+    var row = el('div', 'target-row')
+    var who = el('div', 'who')
+    who.appendChild(el('b', '', entry.host + ':' + entry.port))
+    who.appendChild(document.createTextNode(' 已从监控列表移除'))
+    row.appendChild(who)
+    var restore = el('button', 'restore', '恢复')
+    restore.type = 'button'
+    restore.addEventListener('click', function () {
+      fetch('api/hidden/' + encodeURIComponent(entry.key), {
+        method: 'DELETE',
+        headers: { 'x-monitor-token': writeToken },
+      }).then(function (response) {
+        return response.json().then(function (body) { return { response: response, body: body } })
+      }).then(function (result) {
+        if (!result.response.ok || !result.body.ok) throw new Error(result.body.error || '恢复失败')
+        setTargetMsg('已恢复 ' + entry.host + ':' + entry.port, 'ok')
+        loadHiddenList()
+        load(true)
+      }).catch(function (error) {
+        setTargetMsg((error && error.message) || String(error), 'error')
+      })
+    })
+    row.appendChild(restore)
+    return row
+  }
+
+  function renderHidden(list) {
+    els.hiddenRows.textContent = ''
+    if (!list || list.length === 0) {
+      els.hiddenRows.appendChild(el('div', 'target-empty', '没有被隐藏的服务器。'))
+      return
+    }
+    list.forEach(function (entry) { els.hiddenRows.appendChild(hiddenRow(entry)) })
+  }
+
+  function loadHiddenList() {
+    fetch('api/hidden', { cache: 'no-store', headers: { accept: 'application/json' } })
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status)
+        return response.json()
+      })
+      .then(function (body) {
+        if (!body || body.ok !== true) throw new Error((body && body.error) || '加载失败')
+        renderHidden(body.targets || [])
+      })
+      .catch(function (error) {
+        els.hiddenRows.textContent = '加载失败：' + ((error && error.message) || String(error))
+      })
+  }
+
+  /** Card trash button: manual targets are deleted, discovered ones are hidden. */
+  function removeServer(entry) {
+    if (!writeToken) {
+      showBanner('页面令牌缺失，请刷新页面后重试')
+      return
+    }
+    var isManual = Boolean(entry.manualId)
+    var label = entry.name || entry.host
+    var question = isManual
+      ? '删除服务器“' + label + '”？密码 / 私钥会一起删除。'
+      : '从监控列表移除“' + label + '”？不会修改 dsh-remote 或 ~/.ssh/config，可稍后恢复。'
+    if (!window.confirm(question)) return
+    var request
+    if (isManual) {
+      request = fetch('api/targets/' + encodeURIComponent(entry.manualId), {
+        method: 'DELETE',
+        headers: { 'x-monitor-token': writeToken },
+      })
+    } else {
+      request = fetch('api/hidden', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
+        body: JSON.stringify({ host: entry.host, port: entry.port }),
+      })
+    }
+    request.then(function (response) {
+      return response.json().then(function (body) { return { response: response, body: body } })
+    }).then(function (result) {
+      if (!result.response.ok || !result.body.ok) throw new Error(result.body.error || '操作失败')
+      showBanner(null)
+      load(true)
+    }).catch(function (error) {
+      showBanner('操作失败：' + ((error && error.message) || String(error)))
+    })
+  }
+
   function openTargets() {
     els.modal.hidden = false
     document.body.style.overflow = 'hidden'
     syncAuthFields()
     setTargetMsg('', '')
     loadTargetList()
+    loadHiddenList()
     var host = els.targetForm.elements.host
     if (host) window.setTimeout(function () { host.focus() }, 30)
   }
