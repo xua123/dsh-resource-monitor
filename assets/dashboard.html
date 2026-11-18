@@ -568,7 +568,7 @@
             <option value="default">显存剩余 ↓</option>
             <option value="cpu">CPU 占用 ↓</option>
             <option value="mem">内存占用 ↓</option>
-            <option value="accel">平均利用率 ↓</option>
+            <option value="vram-avg">显存平均利用率 ↓</option>
           </select>
         </label>
         <button class="btn" id="view-toggle" type="button" title="切换卡片 / 列表视图">列表视图</button>
@@ -1354,6 +1354,21 @@
     return total
   }
 
+  function avgAccelMem(entry) {
+    var list = entry.gpus || []
+    if (!list.length) return -1
+    var sum = 0
+    var count = 0
+    list.forEach(function (g) {
+      var m = Number(g.memoryPercent)
+      if (Number.isFinite(m)) {
+        sum += m
+        count += 1
+      }
+    })
+    return count === 0 ? -1 : sum / count
+  }
+
   function sortEntries(list) {
     return list.slice().sort(function (a, b) {
       var aLocal = a.kind === 'local'
@@ -1367,7 +1382,7 @@
       if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1
       if (state.sortBy === 'cpu') return (Number(b.cpu && b.cpu.usage) || -1) - (Number(a.cpu && a.cpu.usage) || -1)
       if (state.sortBy === 'mem') return (Number(b.memory && b.memory.percent) || -1) - (Number(a.memory && a.memory.percent) || -1)
-      if (state.sortBy === 'accel') return peakAccelUtil(b) - peakAccelUtil(a)
+      if (state.sortBy === 'vram-avg' || state.sortBy === 'accel') return avgAccelMem(b) - avgAccelMem(a)
       return 0
     })
   }
@@ -2543,6 +2558,7 @@
   })
   els.sortBy.addEventListener('change', function () {
     state.sortBy = els.sortBy.value || 'default'
+    try { localStorage.setItem('dsh-resource-monitor:sort', state.sortBy) } catch (e) {}
     render()
   })
   els.viewToggle.addEventListener('click', function () {
@@ -2867,6 +2883,15 @@
   }
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
   syncIntervalControls()
+  try {
+    var savedSort = localStorage.getItem('dsh-resource-monitor:sort')
+    if (savedSort === 'accel') savedSort = 'vram-avg'
+    if (savedSort && Array.prototype.some.call(els.sortBy.options, function (option) { return option.value === savedSort })) {
+      state.sortBy = savedSort
+      els.sortBy.value = savedSort
+      if (els.sortBy._syncCustom) els.sortBy._syncCustom()
+    }
+  } catch (e) {}
   state.ticker = window.setInterval(tick, 1000)
   function bootMonitor() {
     render()
