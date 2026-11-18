@@ -2541,6 +2541,83 @@
       if (savedWsHost) state.wsBoundHost = savedWsHost
     } catch (e) {}
   }
+  function enhanceSelect(selectEl) {
+    if (!selectEl || selectEl._enhanced) return
+    selectEl._enhanced = true
+    var wrap = el('span', 'cselect-wrap')
+    var btn = el('button', 'cselect-btn')
+    btn.type = 'button'
+    var labelSpan = el('span', '', '')
+    btn.appendChild(labelSpan)
+    btn.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>')
+    var menu = el('div', 'cselect-menu')
+    menu.hidden = true
+
+    selectEl.parentNode.insertBefore(wrap, selectEl)
+    selectEl.classList.add('cselect-native')
+    selectEl.tabIndex = -1
+    wrap.appendChild(selectEl)
+    wrap.appendChild(btn)
+    wrap.appendChild(menu)
+
+    function sync() {
+      var opts = Array.prototype.slice.call(selectEl.options || [])
+      var cur = opts.find(function (o) { return o.value === selectEl.value }) || opts[0]
+      labelSpan.textContent = cur ? cur.textContent : ''
+      menu.textContent = ''
+      opts.forEach(function (opt) {
+        var item = el('button', 'cselect-opt' + (opt.value === selectEl.value ? ' active' : ''))
+        item.type = 'button'
+        item.appendChild(el('span', '', opt.textContent))
+        item.appendChild(el('span', 'chk', '✓'))
+        item.addEventListener('click', function (e) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (selectEl.value !== opt.value) {
+            selectEl.value = opt.value
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }))
+          } else if (opt.value === 'custom') {
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }))
+          }
+          closeAllSelects()
+        })
+        menu.appendChild(item)
+      })
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault()
+      e.stopPropagation()
+      var willOpen = menu.hidden
+      closeAllSelects()
+      if (willOpen) {
+        sync()
+        menu.hidden = false
+        wrap.classList.add('open')
+      }
+    })
+
+    selectEl._syncCustom = sync
+    sync()
+  }
+
+  function closeAllSelects() {
+    document.querySelectorAll('.cselect-wrap.open').forEach(function (w) {
+      w.classList.remove('open')
+      var m = w.querySelector('.cselect-menu')
+      if (m) m.hidden = true
+    })
+  }
+
+  document.addEventListener('click', closeAllSelects)
+  ;[els.kindFilter, els.tagFilter, els.sortBy, els.interval, els.wsBind].forEach(enhanceSelect)
+
+  if (isWorkspaceScope && !state.wsBoundHost) {
+    try {
+      var savedWsHost = localStorage.getItem(wsStorageKey)
+      if (savedWsHost) state.wsBoundHost = savedWsHost
+    } catch (e) {}
+  }
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
   syncIntervalControls()
   state.ticker = window.setInterval(tick, 1000)
