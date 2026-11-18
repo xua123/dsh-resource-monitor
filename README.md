@@ -26,7 +26,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.7.1.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.7.2.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -35,12 +35,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.7.1.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.7.2.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.7.1.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.7.2.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
