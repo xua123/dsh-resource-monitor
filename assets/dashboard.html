@@ -750,6 +750,7 @@
     busy: false,
     lastUpdate: 0,
     history: Object.create(null),
+    accelHistory: Object.create(null),
     expandedAcc: Object.create(null),
     filter: '',
     kindFilter: 'all',
@@ -869,8 +870,44 @@
     return fmtBytes(n) + '/s'
   }
 
+  function accelKey(entry, gpu) {
+    return String(entry.id || entry.host || '') + '|' + String(gpu.uuid || gpu.index || gpu.name || '')
+  }
+
+  /**
+   * `nvidia-smi` / `npu-smi` report instantaneous utilization. Inference
+   * workloads are bursty, so a 5s poll often catches 0% between requests even
+   * while VRAM stays allocated. Keep a 15s window and expose its peak.
+   */
+  function trackAccelHistory(entries) {
+    var now = Date.now()
+    entries.forEach(function (entry) {
+      ;(entry.gpus || []).forEach(function (gpu) {
+        var key = accelKey(entry, gpu)
+        var list = state.accelHistory[key] || []
+        var value = Number(gpu.utilization)
+        if (Number.isFinite(value)) list.push({ t: now, v: value })
+        while (list.length > 0 && now - list[0].t > 15000) list.shift()
+        state.accelHistory[key] = list
+        if (list.length > 0) {
+          var peak = list[0].v
+          for (var i = 1; i < list.length; i += 1) if (list[i].v > peak) peak = list[i].v
+          gpu.utilPeak = peak
+        }
+      })
+    })
+  }
+
+  /** Utilization to display: 15s peak when it is higher than this sample. */
+  function accelUtil(gpu) {
+    var peak = Number(gpu.utilPeak)
+    var current = Number(gpu.utilization)
+    if (Number.isFinite(peak) && (!Number.isFinite(current) || peak > current)) return peak
+    return Number.isFinite(current) ? current : null
+  }
+
   function isFreeCard(gpu) {
-    var u = Number(gpu.utilization)
+    var u = accelUtil(gpu)
     var m = Number(gpu.memoryPercent)
     return (Number.isFinite(u) && u < 10) && (!Number.isFinite(m) || m < 10)
   }
@@ -1032,7 +1069,15 @@
     }
     gpuRow.appendChild(gpuTop)
 
-    gpuRow.appendChild(renderSubBar('算力', gpu.utilization, ''))
+    var utilCurrent = Number(gpu.utilization)
+    var utilPeak = Number(gpu.utilPeak)
+    var utilLabel = '算力'
+    var utilRight = ''
+    if (Number.isFinite(utilPeak) && (!Number.isFinite(utilCurrent) || utilPeak > utilCurrent + 0.5)) {
+      utilLabel = '算力(15s峰值)'
+      utilRight = Number.isFinite(utilCurrent) ? '当前 ' + fmtPct(utilCurrent) : '当前 —'
+    }
+    gpuRow.appendChild(renderSubBar(utilLabel, accelUtil(gpu), utilRight))
     var memText = (gpu.memoryUsed !== null && gpu.memoryUsed !== undefined && gpu.memoryTotal)
       ? fmtBytes(gpu.memoryUsed) + ' / ' + fmtBytes(gpu.memoryTotal)
       : ''
@@ -1271,7 +1316,7 @@
     if (!list.length) return -1
     var best = -1
     list.forEach(function (g) {
-      var u = Number(g.utilization)
+      var u = Number(accelUtil(g))
       if (Number.isFinite(u) && u > best) best = u
     })
     return best
@@ -1494,6 +1539,7 @@
     var entries = []
     if (data.local) entries.push(data.local)
     entries = entries.concat(data.remotes || [])
+    trackAccelHistory(entries)
     syncWorkspaceSelector(entries)
     syncTagOptions(entries)
 
@@ -1906,7 +1952,7 @@
     if (gpus.length) {
       lines.push('- 算力卡:')
       gpus.forEach(function (g, i) {
-        lines.push('  - [' + accLabel(g.type) + ' #' + (g.index ?? i) + '] ' + g.name + ': 算力 ' + fmtPct(g.utilization) + ', ' + (g.memoryLabel || '显存') + ' ' + fmtBytes(g.memoryUsed) + ' / ' + fmtBytes(g.memoryTotal) + ' (' + fmtPct(g.memoryPercent) + ')' + (g.temperature != null ? ', ' + g.temperature + '°C' : ''))
+        lines.push('  - [' + accLabel(g.type) + ' #' + (g.index ?? i) + '] ' + g.name + ': 算力 ' + fmtPct(accelUtil(g)) + ', ' + (g.memoryLabel || '显存') + ' ' + fmtBytes(g.memoryUsed) + ' / ' + fmtBytes(g.memoryTotal) + ' (' + fmtPct(g.memoryPercent) + ')' + (g.temperature != null ? ', ' + g.temperature + '°C' : ''))
       })
     }
     var procs = (state.drawerData && state.drawerData.processes) || []

@@ -25,7 +25,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.4.0.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.4.1.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -34,12 +34,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.4.0.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.4.1.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.4.0.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.4.1.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -111,6 +111,12 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 - **海光 DCU / AMD GPU**：通过 `hy-smi` / `rocm-smi` 读取每张 DCU 的利用率、VRAM 已用/总量与占卡比例；兼容带 ANSI 错误行和空字段的 `hy-smi --json` 输出，以及标准表格输出。
 - 每张算力卡都会显示 **算力占用百分比** 和 **显存占卡比例**，不再只显示已用字节数。
 - **系统 Top 进程**：点击在线服务器卡片打开右侧详情抽屉时按需执行（远程 Linux 使用 `ps`，本机 Linux/macOS 使用 `ps`，Windows 使用轻量 `Get-Process`），纯只读展示。
+
+### 算力占用为什么经常显示 0
+
+`nvidia-smi` / `npu-smi` / `hy-smi` 返回的是**瞬时利用率**。推理服务在请求间隙没有 kernel 在执行时，利用率就是 0%，但显存仍被模型进程占用——所以会出现“显存 88%、算力 0%”的现象，不是统计错误。
+
+插件会保留最近 **15 秒**的采样，卡片显示 `算力(15s峰值)`，右侧同时给出当前瞬时值。如果 15 秒内确实没有任何计算活动，仍然会显示 0%。
 
 ## 服务器从哪来
 
