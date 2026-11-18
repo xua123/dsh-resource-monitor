@@ -565,11 +565,10 @@
         </label>
         <label class="field" title="排序方式">
           <select id="sort-by" aria-label="排序方式">
-            <option value="default">默认排序</option>
+            <option value="default">显存占用率 ↓</option>
             <option value="cpu">CPU 占用 ↓</option>
             <option value="mem">内存占用 ↓</option>
             <option value="accel">平均利用率 ↓</option>
-            <option value="vram">显存占用率 ↓</option>
           </select>
         </label>
         <button class="btn" id="view-toggle" type="button" title="切换卡片 / 列表视图">列表视图</button>
@@ -1355,6 +1354,15 @@
 
   function sortEntries(list) {
     return list.slice().sort(function (a, b) {
+      var aLocal = a.kind === 'local'
+      var bLocal = b.kind === 'local'
+      if (aLocal !== bLocal) return aLocal ? -1 : 1
+      if (state.sortBy === 'default') {
+        var memDiff = peakAccelMem(b) - peakAccelMem(a)
+        if (memDiff !== 0) return memDiff
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1
+        return 0
+      }
       if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1
       if (state.sortBy === 'cpu') return (Number(b.cpu && b.cpu.usage) || -1) - (Number(a.cpu && a.cpu.usage) || -1)
       if (state.sortBy === 'mem') return (Number(b.memory && b.memory.percent) || -1) - (Number(a.memory && a.memory.percent) || -1)
