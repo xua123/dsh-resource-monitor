@@ -8,6 +8,7 @@
 - `~/.ssh/config` 支持 `Host` 别名、`HostName`、`User`、`Port`、`IdentityFile`、`Host *` 默认值和 `Include`；认证走你本机已有的密钥 / ssh-agent。
 - 每台服务器一张卡片：CPU、内存、磁盘（显示**已用 / 总容量**与峰值挂载点）、负载、运行时间、SSH 延迟，以及最近 40 次 CPU 采样的迷你曲线。
 - **异构算力卡（GPU / NPU / DCU）**：支持 NVIDIA GPU（`nvidia-smi`）、华为昇腾 NPU（`npu-smi`）、海光 DCU / AMD GPU（`hy-smi` / `rocm-smi`），逐卡展示**平均利用率**、**功耗实际 / 上限（W）**与显存 / HBM 占用进度条。
+- **默认按显存剩余排序**：本机固定第一，其余按每台服务器所有算力卡的**剩余显存总量**从大到小排列；也可切换 CPU / 内存 / 平均利用率排序。
 - **只读进程与显存进程抽屉**：点击任意在线卡片打开右侧详情抽屉，查看类似 `top` 的系统进程（支持搜索、多列排序与迷你进度条）、各算力卡的显存 / HBM 占用进程明细以及完整磁盘分区列表；日常轮询不采集进程列表，对服务器几乎无额外负载。
 - **自定义名称与刷新间隔**：支持为本机和任意服务器设置自定义显示名称（IP / 连接地址固定附带且不可调整）；右上角支持 `10 秒 / 30 秒 / 60 秒 / 手动 / 自定义秒数` 刷新，页面隐藏时自动暂停轮询。
 - **卡片右上角可直接删除 / 移除服务器**：手动添加的会真正删除记录和私钥；来自 `~/.ssh/config` 的只从监控列表隐藏，不会改动原配置，可在“添加服务器”弹窗里恢复。
@@ -25,7 +26,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.7.0.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.7.1.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -34,12 +35,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.7.0.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.7.1.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.7.0.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.7.1.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -84,6 +85,7 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 
 - 快照采用 **stale-while-revalidate**：页面先拿到上一份数据并立即渲染，服务端在后台刷新；慢的 `npu-smi` / `hy-smi` 主机不会把整个页面卡住几秒。
 - 默认刷新间隔 **60 秒**（平均利用率使用同一个间隔作为窗口），首次加载约 1 秒返回（慢主机先显示“采集中”，下一次轮询补全）。
+- 如果首次快照里还有主机在“采集中”，页面会在约 **2.5 秒**后自动补采，不会让慢的 NPU / DCU 主机等满一个刷新周期。
 - 只有手动点“刷新”时才等待一次完整采集。
 
 ## 工作区自动显示当前会话的服务器
