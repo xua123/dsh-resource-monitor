@@ -7,7 +7,7 @@
 - 手动添加支持**密码**或**私钥**（粘贴私钥内容或选择私钥文件），保存后立即开始采集。
 - `~/.ssh/config` 支持 `Host` 别名、`HostName`、`User`、`Port`、`IdentityFile`、`Host *` 默认值和 `Include`；认证走你本机已有的密钥 / ssh-agent。
 - 每台服务器一张卡片：CPU、内存、磁盘（显示**已用 / 总容量**与峰值挂载点）、负载、运行时间、SSH 延迟，以及最近 40 次 CPU 采样的迷你曲线。
-- **异构算力卡（GPU / NPU / DCU）**：支持 NVIDIA GPU（`nvidia-smi`）、华为昇腾 NPU（`npu-smi`）、海光 DCU / AMD GPU（`hy-smi` / `rocm-smi`），逐卡展示**算力利用率**与**显存 / HBM 占用**双进度条、温度与功耗。
+- **异构算力卡（GPU / NPU / DCU）**：支持 NVIDIA GPU（`nvidia-smi`）、华为昇腾 NPU（`npu-smi`）、海光 DCU / AMD GPU（`hy-smi` / `rocm-smi`），逐卡展示**利用率数值**、**功耗实际 / 上限（W）**与显存 / HBM 占用进度条。
 - **只读进程与显存进程抽屉**：点击任意在线卡片打开右侧详情抽屉，查看类似 `top` 的系统进程（支持搜索、多列排序与迷你进度条）、各算力卡的显存 / HBM 占用进程明细以及完整磁盘分区列表；日常轮询不采集进程列表，对服务器几乎无额外负载。
 - **自定义名称与刷新间隔**：支持为本机和任意服务器设置自定义显示名称（IP / 连接地址固定附带且不可调整）；右上角支持 `10 秒 / 30 秒 / 60 秒 / 手动 / 自定义秒数` 刷新，页面隐藏时自动暂停轮询。
 - **卡片右上角可直接删除 / 移除服务器**：手动添加的会真正删除记录和私钥；来自 `~/.ssh/config` 的只从监控列表隐藏，不会改动原配置，可在“添加服务器”弹窗里恢复。
@@ -25,7 +25,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.4.1.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.4.2.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -34,12 +34,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.4.1.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.4.2.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.4.1.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.4.2.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -109,14 +109,14 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 - **NVIDIA GPU**：通过 `nvidia-smi` 读取算力利用率、显存已用/总量、温度、功耗、CUDA Compute Capability 及 `--query-compute-apps` 显存进程。
 - **华为昇腾 NPU**：通过 `npu-smi info` 读取芯片型号、AICore 利用率、每张卡的显存/HBM 已用与占卡比例、温度及底部进程占用表；兼容 310P3 与 910B 两种三行输出格式。
 - **海光 DCU / AMD GPU**：通过 `hy-smi` / `rocm-smi` 读取每张 DCU 的利用率、VRAM 已用/总量与占卡比例；兼容带 ANSI 错误行和空字段的 `hy-smi --json` 输出，以及标准表格输出。
-- 每张算力卡都会显示 **算力占用百分比** 和 **显存占卡比例**，不再只显示已用字节数。
+- 每张算力卡都会显示 **利用率数值**（不再画进度条）、**功耗 实际 / 上限 W** 和 **显存占卡比例**。
 - **系统 Top 进程**：点击在线服务器卡片打开右侧详情抽屉时按需执行（远程 Linux 使用 `ps`，本机 Linux/macOS 使用 `ps`，Windows 使用轻量 `Get-Process`），纯只读展示。
 
 ### 算力占用为什么经常显示 0
 
-`nvidia-smi` / `npu-smi` / `hy-smi` 返回的是**瞬时利用率**。推理服务在请求间隙没有 kernel 在执行时，利用率就是 0%，但显存仍被模型进程占用——所以会出现“显存 88%、算力 0%”的现象，不是统计错误。
+`nvidia-smi` / `npu-smi` / `hy-smi` 返回的是**瞬时利用率**。推理服务在请求间隙没有 kernel 在执行时，利用率就是 0%，但显存仍被模型进程占用——所以会出现“显存 88%、利用率 0%”的现象，不是统计错误。
 
-插件会保留最近 **15 秒**的采样，卡片显示 `算力(15s峰值)`，右侧同时给出当前瞬时值。如果 15 秒内确实没有任何计算活动，仍然会显示 0%。
+插件会保留最近 **15 秒**的采样，卡片显示利用率数字并标注 `当前 x%` 的瞬时值。如果 15 秒内确实没有任何计算活动，仍然会显示 0%。
 
 ## 服务器从哪来
 

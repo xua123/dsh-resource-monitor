@@ -422,6 +422,7 @@
   .gpu-toggle:hover { background: var(--card-soft); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
   .acc-subbar { display: flex; flex-direction: column; gap: 3px; }
   .acc-subhead { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-size: 10.5px; }
+  .acc-stat { margin: 2px 0 1px; }
   .acc-subhead .lbl { color: var(--muted); }
   .acc-subhead .val { font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text-2); }
   .acc-subhead .val em { font-style: normal; font-weight: 500; color: var(--muted); margin-left: 5px; font-size: 10px; }
@@ -567,7 +568,7 @@
             <option value="default">默认排序</option>
             <option value="cpu">CPU 占用 ↓</option>
             <option value="mem">内存占用 ↓</option>
-            <option value="accel">算力卡占用 ↓</option>
+            <option value="accel">利用率 ↓</option>
           </select>
         </label>
         <button class="btn" id="view-toggle" type="button" title="切换卡片 / 列表视图">列表视图</button>
@@ -1056,7 +1057,6 @@
     gpuTop.appendChild(gpuName)
     var envParts = []
     if (gpu.temperature !== null && gpu.temperature !== undefined) envParts.push(Math.round(gpu.temperature) + '°C')
-    if (gpu.powerW !== null && gpu.powerW !== undefined) envParts.push(Math.round(gpu.powerW) + 'W')
     if (envParts.length || gpu.computeCap) {
       var chips = el('span', 'gpu-chips')
       if (envParts.length) {
@@ -1064,20 +1064,33 @@
         if (isHotCard(gpu)) envChip.title = '芯片温度偏高（≥ 85°C）'
         chips.appendChild(envChip)
       }
-      if (gpu.computeCap) chips.appendChild(el('span', 'gpu-chip', '算力 ' + gpu.computeCap))
+      if (gpu.computeCap) chips.appendChild(el('span', 'gpu-chip', 'CC ' + gpu.computeCap))
       gpuTop.appendChild(chips)
     }
     gpuRow.appendChild(gpuTop)
 
     var utilCurrent = Number(gpu.utilization)
     var utilPeak = Number(gpu.utilPeak)
-    var utilLabel = '算力'
-    var utilRight = ''
+    var utilRow = el('div', 'acc-subhead acc-stat')
+    utilRow.appendChild(el('span', 'lbl', '利用率'))
+    var utilVal = el('span', 'val', fmtPct(accelUtil(gpu)))
     if (Number.isFinite(utilPeak) && (!Number.isFinite(utilCurrent) || utilPeak > utilCurrent + 0.5)) {
-      utilLabel = '算力(15s峰值)'
-      utilRight = Number.isFinite(utilCurrent) ? '当前 ' + fmtPct(utilCurrent) : '当前 —'
+      utilVal.appendChild(el('em', '', Number.isFinite(utilCurrent) ? '当前 ' + fmtPct(utilCurrent) : '当前 —'))
     }
-    gpuRow.appendChild(renderSubBar(utilLabel, accelUtil(gpu), utilRight))
+    utilRow.appendChild(utilVal)
+    gpuRow.appendChild(utilRow)
+
+    var powerText = (gpu.powerW !== null && gpu.powerW !== undefined)
+      ? Math.round(gpu.powerW) + ' W'
+      : '—'
+    if (gpu.powerLimit !== null && gpu.powerLimit !== undefined) {
+      powerText += ' / ' + Math.round(gpu.powerLimit) + ' W'
+    }
+    var powerRow = el('div', 'acc-subhead acc-stat')
+    powerRow.appendChild(el('span', 'lbl', '功耗'))
+    powerRow.appendChild(el('span', 'val', powerText))
+    gpuRow.appendChild(powerRow)
+
     var memText = (gpu.memoryUsed !== null && gpu.memoryUsed !== undefined && gpu.memoryTotal)
       ? fmtBytes(gpu.memoryUsed) + ' / ' + fmtBytes(gpu.memoryTotal)
       : ''
@@ -1952,7 +1965,7 @@
     if (gpus.length) {
       lines.push('- 算力卡:')
       gpus.forEach(function (g, i) {
-        lines.push('  - [' + accLabel(g.type) + ' #' + (g.index ?? i) + '] ' + g.name + ': 算力 ' + fmtPct(accelUtil(g)) + ', ' + (g.memoryLabel || '显存') + ' ' + fmtBytes(g.memoryUsed) + ' / ' + fmtBytes(g.memoryTotal) + ' (' + fmtPct(g.memoryPercent) + ')' + (g.temperature != null ? ', ' + g.temperature + '°C' : ''))
+        lines.push('  - [' + accLabel(g.type) + ' #' + (g.index ?? i) + '] ' + g.name + ': 利用率 ' + fmtPct(accelUtil(g)) + ', 功耗 ' + (g.powerW != null ? Math.round(g.powerW) + ' W' + (g.powerLimit != null ? ' / ' + Math.round(g.powerLimit) + ' W' : '') : '—') + ', ' + (g.memoryLabel || '显存') + ' ' + fmtBytes(g.memoryUsed) + ' / ' + fmtBytes(g.memoryTotal) + ' (' + fmtPct(g.memoryPercent) + ')' + (g.temperature != null ? ', ' + g.temperature + '°C' : ''))
       })
     }
     var procs = (state.drawerData && state.drawerData.processes) || []
