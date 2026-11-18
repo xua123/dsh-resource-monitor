@@ -293,34 +293,142 @@
   }
   .target-row .restore:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
-  .card-remove {
+  .card-actions { display: flex; align-items: center; gap: 2px; flex: none; margin: -3px -4px 0 0; }
+  .card-remove, .card-edit {
     flex: none; width: 26px; height: 26px; display: grid; place-items: center;
-    margin: -3px -4px 0 0; border: 1px solid transparent; border-radius: 7px;
+    border: 1px solid transparent; border-radius: 7px;
     background: transparent; color: var(--muted); cursor: pointer;
     opacity: .55; transition: opacity .15s ease, color .15s ease, background .15s ease;
   }
-  .card:hover .card-remove, .card-remove:focus-visible { opacity: 1; }
+  .card:hover .card-remove, .card-remove:focus-visible,
+  .card:hover .card-edit, .card-edit:focus-visible { opacity: 1; }
   .card-remove:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); border-color: color-mix(in srgb, var(--danger) 25%, var(--border)); }
-  .card-remove svg { width: 14px; height: 14px; }
+  .card-edit:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 25%, var(--border)); }
+  .card-remove svg, .card-edit svg { width: 14px; height: 14px; }
+  .custom-interval { display: inline-flex; align-items: center; gap: 4px; }
+  .custom-interval[hidden] { display: none; }
+  .custom-interval input {
+    width: 58px; height: 28px; padding: 0 7px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit;
+    font-variant-numeric: tabular-nums; outline: none;
+  }
+  .custom-interval input:focus { border-color: var(--accent); }
+  .readonly-field { opacity: .78; cursor: not-allowed; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
   .gpu-list {
     margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border);
-    display: flex; flex-direction: column; gap: 8px;
+    display: flex; flex-direction: column; gap: 10px;
   }
-  .gpu-title { font-size: 10px; color: var(--muted); letter-spacing: .35px; }
-  .gpu-top { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+  .gpu-title { font-size: 10px; color: var(--muted); letter-spacing: .35px; display: flex; justify-content: space-between; align-items: center; }
+  .gpu-row { display: flex; flex-direction: column; gap: 4px; }
+  .gpu-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .acc-badge {
+    flex: none; font-size: 9.5px; font-weight: 700; line-height: 15px; padding: 0 5px; border-radius: 4px;
+    letter-spacing: .3px; text-transform: uppercase;
+  }
+  .acc-badge.gpu { color: #2f7df6; background: color-mix(in srgb, #2f7df6 12%, var(--card)); border: 1px solid color-mix(in srgb, #2f7df6 28%, var(--border)); }
+  .acc-badge.npu { color: #8b5cf6; background: color-mix(in srgb, #8b5cf6 12%, var(--card)); border: 1px solid color-mix(in srgb, #8b5cf6 28%, var(--border)); }
+  .acc-badge.dcu { color: #0ea5a4; background: color-mix(in srgb, #0ea5a4 12%, var(--card)); border: 1px solid color-mix(in srgb, #0ea5a4 28%, var(--border)); }
   .gpu-name {
     flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     font-size: 11px; font-weight: 600; color: var(--text-2);
   }
-  .gpu-util { flex: none; font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
   .gpu-chip {
     flex: none; padding: 0 5px; border-radius: 5px; line-height: 16px;
-    font-size: 10px; color: color-mix(in srgb, var(--accent) 82%, var(--text));
-    background: color-mix(in srgb, var(--accent) 10%, var(--card));
-    border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+    font-size: 10px; color: var(--muted); background: var(--bg-soft); border: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
   }
-  .gpu-note { margin-top: 3px; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acc-subbar { display: flex; flex-direction: column; gap: 3px; }
+  .acc-subhead { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; font-size: 10.5px; }
+  .acc-subhead .lbl { color: var(--muted); }
+  .acc-subhead .val { font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text-2); }
+  .acc-subhead .val em { font-style: normal; font-weight: 500; color: var(--muted); margin-left: 5px; font-size: 10px; }
+  .bar.sm { height: 5px; }
+
+  .card.clickable { cursor: pointer; }
+  .card-detail-hint {
+    margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--accent);
+    display: inline-flex; align-items: center; gap: 2px;
+  }
+
+  /* Drawer */
+  .drawer-backdrop[hidden] { display: none; }
+  .drawer-backdrop {
+    position: fixed; inset: 0; z-index: 70;
+    background: rgba(5, 8, 14, .56); backdrop-filter: blur(4px);
+    display: flex; justify-content: flex-end;
+  }
+  .drawer {
+    width: min(840px, 96vw); height: 100%; background: var(--card);
+    border-left: 1px solid var(--border); box-shadow: -16px 0 48px rgba(0, 0, 0, .35);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .drawer-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--card);
+  }
+  .drawer-title-wrap { flex: 1; min-width: 180px; }
+  .drawer-title { margin: 0; font-size: 15px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+  .drawer-sub { margin: 2px 0 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .drawer-tools { display: flex; align-items: center; gap: 8px; }
+  .toggle-pill {
+    display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 10px;
+    border-radius: 8px; border: 1px solid var(--border); background: var(--bg-soft);
+    font-size: 11.5px; color: var(--text-2); cursor: pointer; user-select: none;
+  }
+  .toggle-pill input { margin: 0; accent-color: var(--accent); }
+
+  .drawer-tabs {
+    display: flex; align-items: center; gap: 4px; padding: 8px 18px 0;
+    border-bottom: 1px solid var(--border); background: var(--bg-soft);
+  }
+  .tab-btn {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600;
+    padding: 8px 12px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-count {
+    font-size: 10px; padding: 0 6px; border-radius: 99px; line-height: 16px;
+    background: var(--card); border: 1px solid var(--border); color: var(--text-2);
+  }
+
+  .drawer-body { flex: 1; overflow: auto; padding: 14px 18px 22px; }
+  .proc-toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .proc-meta { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: auto; background: var(--card); }
+  table.proc-table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  table.proc-table th {
+    position: sticky; top: 0; z-index: 1; background: var(--bg-soft);
+    text-align: left; font-weight: 650; color: var(--text-2); padding: 8px 10px;
+    border-bottom: 1px solid var(--border); white-space: nowrap; user-select: none;
+  }
+  table.proc-table th.sortable { cursor: pointer; }
+  table.proc-table th.sortable:hover { color: var(--accent); }
+  table.proc-table td {
+    padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    vertical-align: middle;
+  }
+  table.proc-table tr:last-child td { border-bottom: 0; }
+  table.proc-table tbody tr:hover { background: var(--card-soft); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
+  .cmd-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mini-meter { display: flex; align-items: center; gap: 7px; min-width: 92px; }
+  .mini-meter .bar { flex: 1; height: 5px; }
+  .mini-meter span { width: 38px; text-align: right; font-weight: 600; }
+
+  .hw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .hw-box {
+    padding: 12px 13px; border: 1px solid var(--border); border-radius: 11px;
+    background: var(--card-soft); display: flex; flex-direction: column; gap: 8px;
+  }
+  .hw-box h4 { margin: 0; font-size: 12px; font-weight: 650; color: var(--text-2); }
 
   @media (max-width: 640px) {
     .top-inner { padding: 12px 14px 10px; }
@@ -358,16 +466,36 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
           <input id="q" type="search" placeholder="筛选服务器" autocomplete="off">
         </label>
+        <label class="field" title="按状态或加速卡过滤">
+          <select id="kind-filter" aria-label="状态过滤">
+            <option value="all">全部节点</option>
+            <option value="online">仅在线</option>
+            <option value="accel">含 GPU / NPU / DCU</option>
+            <option value="offline">离线 / 异常</option>
+          </select>
+        </label>
+        <label class="field" title="排序方式">
+          <select id="sort-by" aria-label="排序方式">
+            <option value="default">默认排序</option>
+            <option value="cpu">CPU 占用 ↓</option>
+            <option value="mem">内存占用 ↓</option>
+            <option value="accel">算力卡占用 ↓</option>
+          </select>
+        </label>
         <label class="field" title="自动刷新间隔">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 1.8"></path></svg>
           <select id="interval" aria-label="刷新间隔">
-            <option value="3000">3 秒</option>
-            <option value="5000">5 秒</option>
             <option value="10000">10 秒</option>
             <option value="30000">30 秒</option>
+            <option value="60000">60 秒</option>
             <option value="0">手动</option>
+            <option value="custom">自定义…</option>
           </select>
         </label>
+        <span class="custom-interval" id="custom-interval-wrap" hidden>
+          <input id="custom-interval-sec" type="number" min="1" max="3600" step="1" placeholder="秒" aria-label="自定义刷新秒数">
+          <button class="btn" id="custom-interval-apply" type="button">应用</button>
+        </span>
         <button class="btn" id="add-target" type="button" title="添加一台 SSH 服务器">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
           添加服务器
@@ -436,6 +564,55 @@
       </div>
     </div>
   </div>
+
+  <div class="modal" id="alias-modal" hidden>
+    <div class="modal-panel" style="width:min(440px,100%)" role="dialog" aria-modal="true" aria-labelledby="alias-title">
+      <div class="modal-head">
+        <h2 id="alias-title">自定义服务器名称</h2>
+        <button class="icon-btn" id="alias-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="alias-form" class="form-grid" autocomplete="off">
+          <input type="hidden" name="id">
+          <label class="full">IP / 连接地址（不可调整）
+            <input name="ipReadonly" class="readonly-field" type="text" readonly disabled>
+          </label>
+          <label class="full">自定义名称（留空则恢复默认名称）
+            <input name="name" maxlength="80" placeholder="例如：A100 训练节点-01">
+          </label>
+          <div class="full form-actions">
+            <button type="submit" class="btn primary">保存名称</button>
+            <span class="form-msg" id="alias-msg"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="detail-drawer" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-head">
+        <div class="drawer-title-wrap">
+          <h2 class="drawer-title" id="drawer-title">节点详情</h2>
+          <p class="drawer-sub" id="drawer-sub">—</p>
+        </div>
+        <div class="drawer-tools">
+          <label class="toggle-pill" title="每 3 秒自动刷新进程与显存占用">
+            <input type="checkbox" id="drawer-auto" checked>
+            自动刷新
+          </label>
+          <button class="btn" id="drawer-refresh" type="button">刷新</button>
+          <button class="icon-btn" id="drawer-close" type="button" aria-label="关闭">×</button>
+        </div>
+      </div>
+      <div class="drawer-tabs" role="tablist">
+        <button class="tab-btn active" type="button" data-tab="top">Top 进程 <span class="tab-count" id="tab-count-top">0</span></button>
+        <button class="tab-btn" type="button" data-tab="vram">显存 / HBM 进程 <span class="tab-count" id="tab-count-vram">0</span></button>
+        <button class="tab-btn" type="button" data-tab="hw">加速卡与磁盘</button>
+      </div>
+      <div class="drawer-body" id="drawer-body"></div>
+    </aside>
+  </div>
 </div>
 
 <script>
@@ -453,9 +630,20 @@
     lastUpdate: 0,
     history: Object.create(null),
     filter: '',
-    interval: 5000,
+    kindFilter: 'all',
+    sortBy: 'default',
+    interval: 10000,
     timer: null,
-    ticker: null
+    ticker: null,
+    drawerHostId: null,
+    drawerTab: 'top',
+    drawerData: null,
+    drawerError: null,
+    drawerLoading: false,
+    drawerTimer: null,
+    procFilter: '',
+    procSortKey: 'cpuPercent',
+    procSortDir: 'desc'
   }
 
   var els = {
@@ -465,7 +653,12 @@
     banner: document.getElementById('banner'),
     foot: document.getElementById('foot'),
     q: document.getElementById('q'),
+    kindFilter: document.getElementById('kind-filter'),
+    sortBy: document.getElementById('sort-by'),
     interval: document.getElementById('interval'),
+    customIntervalWrap: document.getElementById('custom-interval-wrap'),
+    customIntervalSec: document.getElementById('custom-interval-sec'),
+    customIntervalApply: document.getElementById('custom-interval-apply'),
     refresh: document.getElementById('refresh'),
     emptyRefresh: document.getElementById('empty-refresh'),
     addTarget: document.getElementById('add-target'),
@@ -477,7 +670,20 @@
     targetMsg: document.getElementById('target-msg'),
     authSelect: document.querySelector('#target-form select[name="auth"]'),
     authPassword: document.getElementById('auth-password'),
-    authKey: document.getElementById('auth-key')
+    authKey: document.getElementById('auth-key'),
+    aliasModal: document.getElementById('alias-modal'),
+    aliasClose: document.getElementById('alias-close'),
+    aliasForm: document.getElementById('alias-form'),
+    aliasMsg: document.getElementById('alias-msg'),
+    drawerBackdrop: document.getElementById('detail-drawer'),
+    drawerTitle: document.getElementById('drawer-title'),
+    drawerSub: document.getElementById('drawer-sub'),
+    drawerAuto: document.getElementById('drawer-auto'),
+    drawerRefresh: document.getElementById('drawer-refresh'),
+    drawerClose: document.getElementById('drawer-close'),
+    drawerBody: document.getElementById('drawer-body'),
+    tabCountTop: document.getElementById('tab-count-top'),
+    tabCountVram: document.getElementById('tab-count-vram')
   }
 
   var tokenMeta = document.querySelector('meta[name="dsh-monitor-token"]')
@@ -621,11 +827,63 @@
     return wrap
   }
 
+  function accLabel(type) {
+    if (type === 'npu') return 'NPU'
+    if (type === 'dcu') return 'DCU'
+    return 'GPU'
+  }
+
+  function renderSubBar(label, pct, rightText) {
+    var wrap = el('div', 'acc-subbar')
+    var head = el('div', 'acc-subhead')
+    head.appendChild(el('span', 'lbl', label))
+    var val = el('span', 'val', fmtPct(pct))
+    if (rightText) val.appendChild(el('em', '', rightText))
+    head.appendChild(val)
+    wrap.appendChild(head)
+    var bar = el('div', 'bar sm')
+    var fill = el('i', toneFor(pct))
+    fill.style.width = (clampPct(pct) === null ? 0 : clampPct(pct)) + '%'
+    bar.appendChild(fill)
+    wrap.appendChild(bar)
+    return wrap
+  }
+
+  function renderAcceleratorRow(gpu, index) {
+    var type = (gpu.type === 'npu' || gpu.type === 'dcu') ? gpu.type : 'gpu'
+    var gpuRow = el('div', 'gpu-row')
+    var gpuTop = el('div', 'gpu-top')
+    gpuTop.appendChild(el('span', 'acc-badge ' + type, accLabel(type)))
+    var idxPrefix = (gpu.index !== undefined && gpu.index !== null) ? '#' + gpu.index + ' ' : ''
+    var gpuName = el('span', 'gpu-name', idxPrefix + (gpu.name || (accLabel(type) + ' ' + index)))
+    gpuName.title = gpu.name || ''
+    gpuTop.appendChild(gpuName)
+    var envParts = []
+    if (gpu.temperature !== null && gpu.temperature !== undefined) envParts.push(Math.round(gpu.temperature) + '°C')
+    if (gpu.powerW !== null && gpu.powerW !== undefined) envParts.push(Math.round(gpu.powerW) + 'W')
+    if (envParts.length) gpuTop.appendChild(el('span', 'gpu-chip', envParts.join(' · ')))
+    if (gpu.computeCap) gpuTop.appendChild(el('span', 'gpu-chip', '算力 ' + gpu.computeCap))
+    gpuRow.appendChild(gpuTop)
+
+    gpuRow.appendChild(renderSubBar('算力', gpu.utilization, ''))
+    var memText = (gpu.memoryUsed !== null && gpu.memoryUsed !== undefined && gpu.memoryTotal)
+      ? fmtBytes(gpu.memoryUsed) + ' / ' + fmtBytes(gpu.memoryTotal)
+      : ''
+    gpuRow.appendChild(renderSubBar(gpu.memoryLabel || '显存', gpu.memoryPercent, memText))
+    return gpuRow
+  }
+
   function card(entry) {
     var offline = entry.status === 'offline'
     var connecting = entry.status === 'connecting'
     var critical = !offline && !connecting && (Number(entry.disk && entry.disk.percent) >= 92 || Number(entry.memory && entry.memory.percent) >= 92)
-    var node = el('article', 'card' + (offline ? ' offline' : '') + (connecting ? ' connecting' : '') + (entry.kind === 'local' ? ' local' : '') + (critical ? ' critical' : ''))
+    var node = el('article', 'card' + (offline ? ' offline' : '') + (connecting ? ' connecting' : '') + (entry.kind === 'local' ? ' local' : '') + (critical ? ' critical' : '') + (!offline && !connecting ? ' clickable' : ''))
+    if (!offline && !connecting) {
+      node.title = '点击查看 Top 进程与显存占用详情'
+      node.addEventListener('click', function () {
+        openDrawer(entry)
+      })
+    }
 
     var head = el('div', 'card-head')
     head.appendChild(el('span', 'dot'))
@@ -653,6 +911,17 @@
     hostLine.title = hostText
     body.appendChild(hostLine)
     head.appendChild(body)
+    var actionsWrap = el('div', 'card-actions')
+    var editBtn = el('button', 'card-edit')
+    editBtn.type = 'button'
+    editBtn.title = '自定义服务器名称（IP 地址不可调整）'
+    editBtn.setAttribute('aria-label', '自定义服务器名称')
+    editBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>'
+    editBtn.addEventListener('click', function (event) {
+      event.stopPropagation()
+      openAliasModal(entry)
+    })
+    actionsWrap.appendChild(editBtn)
     if (entry.kind !== 'local') {
       var remove = el('button', 'card-remove')
       remove.type = 'button'
@@ -663,8 +932,9 @@
         event.stopPropagation()
         removeServer(entry)
       })
-      head.appendChild(remove)
+      actionsWrap.appendChild(remove)
     }
+    head.appendChild(actionsWrap)
     node.appendChild(head)
 
     if (connecting) {
@@ -717,29 +987,15 @@
 
       if (entry.gpus && entry.gpus.length) {
         var gpuWrap = el('div', 'gpu-list')
-        gpuWrap.appendChild(el('div', 'gpu-title', entry.gpus.length > 1 ? 'GPU · ' + entry.gpus.length + ' 张' : 'GPU'))
+        var kinds = []
+        if (entry.gpus.some(function (g) { return !g.type || g.type === 'gpu' })) kinds.push('GPU')
+        if (entry.gpus.some(function (g) { return g.type === 'npu' })) kinds.push('NPU')
+        if (entry.gpus.some(function (g) { return g.type === 'dcu' })) kinds.push('DCU')
+        var titleEl = el('div', 'gpu-title')
+        titleEl.appendChild(el('span', '', (kinds.join(' / ') || '算力卡') + (entry.gpus.length > 1 ? ' · ' + entry.gpus.length + ' 张' : '')))
+        gpuWrap.appendChild(titleEl)
         entry.gpus.forEach(function (gpu, index) {
-          var gpuRow = el('div', 'gpu-row')
-          var gpuTop = el('div', 'gpu-top')
-          var gpuName = el('span', 'gpu-name', gpu.name || ('GPU ' + index))
-          gpuName.title = gpu.name || ''
-          gpuTop.appendChild(gpuName)
-          gpuTop.appendChild(el('span', 'gpu-util', fmtPct(gpu.utilization)))
-          if (gpu.computeCap) gpuTop.appendChild(el('span', 'gpu-chip', '算力 ' + gpu.computeCap))
-          gpuRow.appendChild(gpuTop)
-          var gpuBar = el('div', 'bar')
-          var gpuFill = el('i', toneFor(gpu.utilization))
-          gpuFill.style.width = (clampPct(gpu.utilization) === null ? 0 : clampPct(gpu.utilization)) + '%'
-          gpuBar.appendChild(gpuFill)
-          gpuRow.appendChild(gpuBar)
-          var gpuNote = (gpu.memoryUsed !== null && gpu.memoryUsed !== undefined && gpu.memoryTotal)
-            ? fmtBytes(gpu.memoryUsed) + ' / ' + fmtBytes(gpu.memoryTotal)
-            : '显存 —'
-          if (gpu.memoryPercent !== null && gpu.memoryPercent !== undefined) {
-            gpuNote += ' · ' + fmtPct(gpu.memoryPercent)
-          }
-          gpuRow.appendChild(el('div', 'gpu-note', gpuNote))
-          gpuWrap.appendChild(gpuRow)
+          gpuWrap.appendChild(renderAcceleratorRow(gpu, index))
         })
         metrics.appendChild(gpuWrap)
       }
@@ -762,6 +1018,9 @@
     foot.appendChild(stamp)
     var spark = sparkline(entry)
     if (spark) foot.appendChild(spark)
+    if (!offline && !connecting) {
+      foot.appendChild(el('span', 'card-detail-hint', '进程 / 详情 ›'))
+    }
     node.appendChild(foot)
     return node
   }
@@ -777,9 +1036,34 @@
   }
 
   function matches(entry, query) {
+    if (state.kindFilter === 'online' && entry.status !== 'online') return false
+    if (state.kindFilter === 'offline' && entry.status !== 'offline') return false
+    if (state.kindFilter === 'accel' && (!entry.gpus || entry.gpus.length === 0)) return false
     if (!query) return true
-    var hay = [entry.name, entry.host, entry.hostname, entry.username, entry.osName].join(' ').toLowerCase()
+    var accNames = (entry.gpus || []).map(function (g) { return g.name + ' ' + (g.type || '') }).join(' ')
+    var hay = [entry.name, entry.host, entry.hostname, entry.username, entry.osName, accNames].join(' ').toLowerCase()
     return hay.indexOf(query) >= 0
+  }
+
+  function peakAccelUtil(entry) {
+    var list = entry.gpus || []
+    if (!list.length) return -1
+    var best = -1
+    list.forEach(function (g) {
+      var u = Number(g.utilization)
+      if (Number.isFinite(u) && u > best) best = u
+    })
+    return best
+  }
+
+  function sortEntries(list) {
+    if (state.sortBy === 'default') return list
+    return list.slice().sort(function (a, b) {
+      if (state.sortBy === 'cpu') return (Number(b.cpu && b.cpu.usage) || -1) - (Number(a.cpu && a.cpu.usage) || -1)
+      if (state.sortBy === 'mem') return (Number(b.memory && b.memory.percent) || -1) - (Number(a.memory && a.memory.percent) || -1)
+      if (state.sortBy === 'accel') return peakAccelUtil(b) - peakAccelUtil(a)
+      return 0
+    })
   }
 
   function render() {
@@ -799,7 +1083,7 @@
     var entries = []
     if (data.local) entries.push(data.local)
     entries = entries.concat(data.remotes || [])
-    var visible = entries.filter(function (entry) { return matches(entry, state.filter) })
+    var visible = sortEntries(entries.filter(function (entry) { return matches(entry, state.filter) }))
 
     if (entries.length === 0) {
       els.empty.hidden = false
@@ -840,6 +1124,350 @@
       footParts.push('已移除 ' + data.summary.hiddenRemoved + ' 台（可在“添加服务器”里恢复）')
     }
     els.foot.textContent = footParts.join(' · ')
+  }
+
+  function findEntryById(hostId) {
+    if (!state.data) return null
+    if (hostId === 'local') return state.data.local || null
+    var remotes = state.data.remotes || []
+    for (var i = 0; i < remotes.length; i += 1) {
+      if (remotes[i].id === hostId) return remotes[i]
+    }
+    return null
+  }
+
+  function openDrawer(entry) {
+    state.drawerHostId = entry.id
+    state.drawerData = null
+    state.drawerError = null
+    state.procFilter = ''
+    els.drawerBackdrop.hidden = false
+    document.body.style.overflow = 'hidden'
+    updateDrawerHeader(entry)
+    renderDrawer()
+    loadDrawerDetails(true)
+  }
+
+  function closeDrawer() {
+    state.drawerHostId = null
+    window.clearTimeout(state.drawerTimer)
+    els.drawerBackdrop.hidden = true
+    document.body.style.overflow = ''
+  }
+
+  function updateDrawerHeader(entry) {
+    if (!entry) return
+    els.drawerTitle.textContent = (entry.name || entry.host || '节点详情')
+    var parts = []
+    if (entry.kind === 'local') parts.push('本机')
+    else parts.push((entry.username ? entry.username + '@' : '') + entry.host + ':' + (entry.port || 22))
+    if (entry.osName) parts.push(entry.osName)
+    if (entry.uptime) parts.push('运行 ' + fmtUptime(entry.uptime))
+    if (entry.latencyMs !== null && entry.latencyMs !== undefined) parts.push(entry.latencyMs + ' ms')
+    els.drawerSub.textContent = parts.join(' · ')
+  }
+
+  function scheduleDrawer() {
+    window.clearTimeout(state.drawerTimer)
+    if (!state.drawerHostId || !els.drawerAuto.checked || document.hidden) return
+    state.drawerTimer = window.setTimeout(function () {
+      loadDrawerDetails(false)
+    }, 3000)
+  }
+
+  function loadDrawerDetails(force) {
+    var hostId = state.drawerHostId
+    if (!hostId || state.drawerLoading) return
+    state.drawerLoading = true
+    els.drawerRefresh.disabled = true
+    els.drawerRefresh.classList.toggle('spin', true)
+    var url = 'api/hosts/' + encodeURIComponent(hostId) + '/details' + (force ? '?force=1' : '')
+    fetch(url, { cache: 'no-store', headers: { accept: 'application/json' } })
+      .then(function (response) {
+        return response.json().then(function (body) { return { response: response, body: body } })
+      })
+      .then(function (result) {
+        if (!result.response.ok || !result.body || result.body.ok !== true) {
+          throw new Error((result.body && result.body.error) || ('HTTP ' + result.response.status))
+        }
+        if (state.drawerHostId !== hostId) return
+        state.drawerData = result.body
+        state.drawerError = null
+        els.tabCountTop.textContent = String((result.body.processes || []).length)
+        els.tabCountVram.textContent = String((result.body.acceleratorProcesses || []).length)
+        updateDrawerHeader(findEntryById(hostId))
+        renderDrawer()
+      })
+      .catch(function (error) {
+        if (state.drawerHostId !== hostId) return
+        state.drawerError = (error && error.message) || String(error)
+        renderDrawer()
+      })
+      .finally(function () {
+        state.drawerLoading = false
+        els.drawerRefresh.disabled = false
+        els.drawerRefresh.classList.remove('spin')
+        scheduleDrawer()
+      })
+  }
+
+  function miniMeter(pct, labelText) {
+    var wrap = el('div', 'mini-meter')
+    var bar = el('div', 'bar')
+    var fill = el('i', toneFor(pct))
+    fill.style.width = (clampPct(pct) === null ? 0 : clampPct(pct)) + '%'
+    bar.appendChild(fill)
+    wrap.appendChild(bar)
+    wrap.appendChild(el('span', '', labelText))
+    return wrap
+  }
+
+  function renderTopProcesses(data) {
+    var procs = (data && data.processes) || []
+    var toolbar = el('div', 'proc-toolbar')
+    var search = el('label', 'field')
+    var input = document.createElement('input')
+    input.type = 'search'
+    input.placeholder = '过滤 PID / 用户 / 进程名'
+    input.value = state.procFilter
+    input.addEventListener('input', function () {
+      state.procFilter = String(input.value || '').trim().toLowerCase()
+      renderDrawer()
+    })
+    search.appendChild(input)
+    toolbar.appendChild(search)
+    toolbar.appendChild(el('span', 'proc-meta', '采样于 ' + fmtRelative(data.sampledAt) + ' · 共 ' + procs.length + ' 个 Top 进程'))
+    els.drawerBody.appendChild(toolbar)
+
+    var filtered = procs.filter(function (p) {
+      if (!state.procFilter) return true
+      var hay = [p.pid, p.user, p.command, p.state].join(' ').toLowerCase()
+      return hay.indexOf(state.procFilter) >= 0
+    })
+
+    filtered.sort(function (a, b) {
+      var k = state.procSortKey
+      var dir = state.procSortDir === 'asc' ? 1 : -1
+      var va = a[k]
+      var vb = b[k]
+      if (typeof va === 'string' || typeof vb === 'string') {
+        return String(va || '').localeCompare(String(vb || '')) * dir
+      }
+      return ((Number(va) || 0) - (Number(vb) || 0)) * dir
+    })
+
+    if (!filtered.length) {
+      els.drawerBody.appendChild(el('div', 'target-empty', '没有匹配的进程。'))
+      return
+    }
+
+    var wrap = el('div', 'table-wrap')
+    var table = el('table', 'proc-table')
+    var thead = document.createElement('thead')
+    var htr = document.createElement('tr')
+    var cols = [
+      { key: 'pid', label: 'PID' },
+      { key: 'user', label: '用户' },
+      { key: 'cpuPercent', label: 'CPU' },
+      { key: 'memPercent', label: '内存' },
+      { key: 'rssBytes', label: 'RSS 物理内存' },
+      { key: 'state', label: '状态' },
+      { key: 'command', label: '命令' }
+    ]
+    cols.forEach(function (col) {
+      var arrow = state.procSortKey === col.key ? (state.procSortDir === 'asc' ? ' ▲' : ' ▼') : ''
+      var th = el('th', 'sortable', col.label + arrow)
+      th.addEventListener('click', function () {
+        if (state.procSortKey === col.key) {
+          state.procSortDir = state.procSortDir === 'desc' ? 'asc' : 'desc'
+        } else {
+          state.procSortKey = col.key
+          state.procSortDir = (col.key === 'user' || col.key === 'command' || col.key === 'pid') ? 'asc' : 'desc'
+        }
+        renderDrawer()
+      })
+      htr.appendChild(th)
+    })
+    thead.appendChild(htr)
+    table.appendChild(thead)
+
+    var tbody = document.createElement('tbody')
+    filtered.forEach(function (p) {
+      var tr = document.createElement('tr')
+      tr.appendChild(el('td', 'mono', p.pid))
+      tr.appendChild(el('td', '', p.user || '—'))
+      var cpuTd = document.createElement('td')
+      if (p.cpuTimeSec !== undefined && p.cpuPercent === p.cpuTimeSec) {
+        cpuTd.textContent = p.cpuTimeSec + 's'
+      } else {
+        cpuTd.appendChild(miniMeter(p.cpuPercent, fmtPct(p.cpuPercent)))
+      }
+      tr.appendChild(cpuTd)
+      var memTd = document.createElement('td')
+      memTd.appendChild(miniMeter(p.memPercent, fmtPct(p.memPercent)))
+      tr.appendChild(memTd)
+      tr.appendChild(el('td', 'mono', fmtBytes(p.rssBytes)))
+      tr.appendChild(el('td', 'mono', p.state || '—'))
+      var cmdTd = el('td', 'cmd-cell mono', p.command)
+      cmdTd.title = p.command
+      tr.appendChild(cmdTd)
+      tbody.appendChild(tr)
+    })
+    table.appendChild(tbody)
+    wrap.appendChild(table)
+    els.drawerBody.appendChild(wrap)
+  }
+
+  function renderVramProcesses(data) {
+    var list = (data && data.acceleratorProcesses) || []
+    var cards = (data && data.accelerators) || []
+    var meta = el('div', 'proc-toolbar')
+    meta.appendChild(el('span', 'proc-meta', '已识别算力卡 ' + cards.length + ' 张 · 显存/HBM 占用进程 ' + list.length + ' 个'))
+    els.drawerBody.appendChild(meta)
+
+    if (!cards.length) {
+      els.drawerBody.appendChild(el('div', 'target-empty', '该节点未检测到 NVIDIA GPU、华为昇腾 NPU 或海光 DCU。'))
+      return
+    }
+    if (!list.length) {
+      els.drawerBody.appendChild(el('div', 'target-empty', '当前没有正在占用显存 / HBM 的计算进程。'))
+      return
+    }
+
+    var wrap = el('div', 'table-wrap')
+    var table = el('table', 'proc-table')
+    var thead = document.createElement('thead')
+    var htr = document.createElement('tr')
+    ;['类型', '卡号 / 设备', 'PID', '进程名', '显存 / HBM 占用', '占该卡比例'].forEach(function (label) {
+      htr.appendChild(el('th', '', label))
+    })
+    thead.appendChild(htr)
+    table.appendChild(thead)
+
+    var tbody = document.createElement('tbody')
+    list.forEach(function (p) {
+      var tr = document.createElement('tr')
+      var type = (p.type === 'npu' || p.type === 'dcu') ? p.type : 'gpu'
+      var badgeTd = document.createElement('td')
+      badgeTd.appendChild(el('span', 'acc-badge ' + type, accLabel(type)))
+      tr.appendChild(badgeTd)
+      var devText = (p.deviceIndex !== null && p.deviceIndex !== undefined ? '#' + p.deviceIndex + ' ' : '') + (p.deviceName || '')
+      tr.appendChild(el('td', '', devText || '—'))
+      tr.appendChild(el('td', 'mono', p.pid))
+      var nameTd = el('td', 'cmd-cell mono', p.name)
+      nameTd.title = p.name
+      tr.appendChild(nameTd)
+      tr.appendChild(el('td', 'mono', fmtBytes(p.memoryUsed)))
+      var pctTd = document.createElement('td')
+      pctTd.appendChild(miniMeter(p.memoryPercent, fmtPct(p.memoryPercent)))
+      tr.appendChild(pctTd)
+      tbody.appendChild(tr)
+    })
+    table.appendChild(tbody)
+    wrap.appendChild(table)
+    els.drawerBody.appendChild(wrap)
+  }
+
+  function renderHwDetails(entry, data) {
+    var cards = (data && data.accelerators) || (entry && entry.gpus) || []
+    var mounts = (entry && entry.disk && entry.disk.mounts) || []
+    var grid = el('div', 'hw-grid')
+
+    if (cards.length) {
+      cards.forEach(function (gpu, idx) {
+        var box = el('div', 'hw-box')
+        box.appendChild(renderAcceleratorRow(gpu, idx))
+        grid.appendChild(box)
+      })
+    } else {
+      var noAcc = el('div', 'hw-box')
+      noAcc.appendChild(el('h4', '', '加速卡'))
+      noAcc.appendChild(el('div', 'target-empty', '未检测到 GPU / NPU / DCU 设备。'))
+      grid.appendChild(noAcc)
+    }
+
+    var diskBox = el('div', 'hw-box')
+    diskBox.appendChild(el('h4', '', '磁盘挂载分区（' + mounts.length + '）'))
+    if (mounts.length) {
+      mounts.forEach(function (m) {
+        diskBox.appendChild(renderSubBar(m.mount, m.percent, fmtBytes(m.used) + ' / ' + fmtBytes(m.total)))
+      })
+    } else {
+      diskBox.appendChild(el('div', 'target-empty', '暂无磁盘挂载数据。'))
+    }
+    grid.appendChild(diskBox)
+    els.drawerBody.appendChild(grid)
+  }
+
+  function renderDrawer() {
+    els.drawerBody.textContent = ''
+    if (state.drawerError) {
+      var err = el('div', 'error-box', '采集失败：' + state.drawerError)
+      els.drawerBody.appendChild(err)
+      if (!state.drawerData) return
+    }
+    if (!state.drawerData) {
+      els.drawerBody.appendChild(el('div', 'collecting', '正在采集系统进程与算力卡显存占用…'))
+      return
+    }
+    var entry = findEntryById(state.drawerHostId)
+    if (state.drawerTab === 'top') renderTopProcesses(state.drawerData)
+    else if (state.drawerTab === 'vram') renderVramProcesses(state.drawerData)
+    else renderHwDetails(entry, state.drawerData)
+  }
+
+  function setAliasMsg(text, tone) {
+    els.aliasMsg.textContent = text || ''
+    els.aliasMsg.className = 'form-msg' + (tone ? ' ' + tone : '')
+  }
+
+  function openAliasModal(entry) {
+    els.aliasForm.elements.id.value = entry.id
+    var ipText = entry.kind === 'local'
+      ? ('本机 · ' + (entry.hostname || entry.host || 'localhost'))
+      : ((entry.username ? entry.username + '@' : '') + (entry.host || '') + (entry.port ? ':' + entry.port : ''))
+    els.aliasForm.elements.ipReadonly.value = ipText
+    els.aliasForm.elements.name.value = entry.name || ''
+    setAliasMsg('', '')
+    els.aliasModal.hidden = false
+    document.body.style.overflow = 'hidden'
+    window.setTimeout(function () {
+      els.aliasForm.elements.name.focus()
+      els.aliasForm.elements.name.select()
+    }, 30)
+  }
+
+  function closeAliasModal() {
+    els.aliasModal.hidden = true
+    document.body.style.overflow = ''
+  }
+
+  function submitAlias(event) {
+    event.preventDefault()
+    if (!writeToken) {
+      setAliasMsg('页面令牌缺失，请刷新页面后重试', 'error')
+      return
+    }
+    var id = String(els.aliasForm.elements.id.value || '')
+    var name = String(els.aliasForm.elements.name.value || '').trim()
+    var submit = els.aliasForm.querySelector('button[type="submit"]')
+    if (submit) submit.disabled = true
+    setAliasMsg('保存中…', '')
+    fetch('api/aliases', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
+      body: JSON.stringify({ id: id, name: name }),
+    }).then(function (response) {
+      return response.json().then(function (payload) { return { response: response, payload: payload } })
+    }).then(function (result) {
+      if (!result.response.ok || !result.payload.ok) throw new Error(result.payload.error || '保存失败')
+      closeAliasModal()
+      load(true)
+    }).catch(function (error) {
+      setAliasMsg((error && error.message) || String(error), 'error')
+    }).finally(function () {
+      if (submit) submit.disabled = false
+    })
   }
 
   function setTargetMsg(text, tone) {
@@ -1120,13 +1748,89 @@
     state.filter = String(els.q.value || '').trim().toLowerCase()
     render()
   })
+  els.kindFilter.addEventListener('change', function () {
+    state.kindFilter = els.kindFilter.value || 'all'
+    render()
+  })
+  els.sortBy.addEventListener('change', function () {
+    state.sortBy = els.sortBy.value || 'default'
+    render()
+  })
 
-  els.interval.addEventListener('change', function () {
-    state.interval = Math.max(0, Number(els.interval.value) || 0)
+  els.drawerClose.addEventListener('click', closeDrawer)
+  els.drawerBackdrop.addEventListener('click', function (event) {
+    if (event.target === els.drawerBackdrop) closeDrawer()
+  })
+  els.drawerRefresh.addEventListener('click', function () { loadDrawerDetails(true) })
+  els.drawerAuto.addEventListener('change', function () {
+    if (els.drawerAuto.checked) loadDrawerDetails(false)
+    else window.clearTimeout(state.drawerTimer)
+  })
+  document.querySelectorAll('.drawer-tabs .tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      state.drawerTab = btn.getAttribute('data-tab') || 'top'
+      document.querySelectorAll('.drawer-tabs .tab-btn').forEach(function (other) {
+        other.classList.toggle('active', other === btn)
+      })
+      renderDrawer()
+    })
+  })
+
+  function applyIntervalMs(ms) {
+    state.interval = Math.max(0, Number(ms) || 0)
     try { localStorage.setItem('dsh-resource-monitor:interval', String(state.interval)) } catch (e) {}
+    syncIntervalControls()
     render()
     schedule()
+  }
+
+  function syncIntervalControls() {
+    var val = String(state.interval)
+    var presets = ['10000', '30000', '60000', '0']
+    if (presets.indexOf(val) >= 0) {
+      els.interval.value = val
+      els.customIntervalWrap.hidden = true
+    } else {
+      els.interval.value = 'custom'
+      els.customIntervalWrap.hidden = false
+      els.customIntervalSec.value = String(Math.max(1, Math.round(state.interval / 1000)))
+    }
+  }
+
+  function applyCustomInterval() {
+    var sec = Math.round(Number(els.customIntervalSec.value))
+    if (!Number.isFinite(sec) || sec < 1) sec = 1
+    if (sec > 3600) sec = 3600
+    els.customIntervalSec.value = String(sec)
+    applyIntervalMs(sec * 1000)
+  }
+
+  els.interval.addEventListener('change', function () {
+    if (els.interval.value === 'custom') {
+      els.customIntervalWrap.hidden = false
+      if (!els.customIntervalSec.value) {
+        els.customIntervalSec.value = String(Math.max(1, Math.round((state.interval || 10000) / 1000)))
+      }
+      els.customIntervalSec.focus()
+      els.customIntervalSec.select()
+      return
+    }
+    applyIntervalMs(Number(els.interval.value) || 0)
   })
+
+  els.customIntervalApply.addEventListener('click', applyCustomInterval)
+  els.customIntervalSec.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      applyCustomInterval()
+    }
+  })
+
+  els.aliasClose.addEventListener('click', closeAliasModal)
+  els.aliasModal.addEventListener('click', function (event) {
+    if (event.target === els.aliasModal) closeAliasModal()
+  })
+  els.aliasForm.addEventListener('submit', submitAlias)
 
   els.refresh.addEventListener('click', function () { load(true) })
   els.emptyRefresh.addEventListener('click', function () { load(true) })
@@ -1137,7 +1841,11 @@
     if (event.target === els.modal) closeTargets()
   })
   document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && !els.modal.hidden) closeTargets()
+    if (event.key === 'Escape') {
+      if (!els.drawerBackdrop.hidden) closeDrawer()
+      else if (!els.aliasModal.hidden) closeAliasModal()
+      else if (!els.modal.hidden) closeTargets()
+    }
   })
   els.authSelect.addEventListener('change', syncAuthFields)
   els.targetForm.addEventListener('submit', submitTarget)
@@ -1167,7 +1875,7 @@
       || localStorage.getItem('dsh-server-monitor:interval')
   } catch (e) {}
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
-  els.interval.value = String(state.interval)
+  syncIntervalControls()
   state.ticker = window.setInterval(tick, 1000)
   render()
   load(false)
