@@ -24,7 +24,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.3.0.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.3.1.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -33,12 +33,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.3.0.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.3.1.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.3.0.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.3.1.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -79,6 +79,14 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 
 保存后，全局面板和工作区标签都只显示选中的工作区服务器；**手动添加的服务器始终显示**，不受这个开关影响。选择保存在 `~/.dsh/server-monitor/selection.json`。
 
+## 工作区标签只显示绑定的服务器
+
+工作区标签会读取当前工作区的本地镜像元数据（`remote-workspaces/**/.dsh-remote-meta.json`），自动绑定到该工作区对应的 SSH 服务器，**只显示这一台**。
+
+- 解析不到时不再回退“显示全部”，而是提示当前工作区未绑定服务器；
+- 右上角下拉可以手动指定服务器；
+- 只有点“查看全部”时才显示全部服务器。
+
 ## 删除 / 隐藏服务器
 
 卡片右上角的垃圾桶按钮：
@@ -90,8 +98,9 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 ## 异构算力卡（GPU / NPU / DCU）与进程监控
 
 - **NVIDIA GPU**：通过 `nvidia-smi` 读取算力利用率、显存已用/总量、温度、功耗、CUDA Compute Capability 及 `--query-compute-apps` 显存进程。
-- **华为昇腾 NPU**：通过 `npu-smi info` 读取芯片型号、AICore 利用率、HBM/内存占用、温度、功耗及底部进程占用表。
-- **海光 DCU / AMD GPU**：通过 `hy-smi` / `rocm-smi`（兼容 `--json` 与标准表格输出）读取利用率、显存、温度、功耗及 `--showpids` 显存进程。
+- **华为昇腾 NPU**：通过 `npu-smi info` 读取芯片型号、AICore 利用率、每张卡的显存/HBM 已用与占卡比例、温度及底部进程占用表；兼容 310P3 与 910B 两种三行输出格式。
+- **海光 DCU / AMD GPU**：通过 `hy-smi` / `rocm-smi` 读取每张 DCU 的利用率、VRAM 已用/总量与占卡比例；兼容带 ANSI 错误行和空字段的 `hy-smi --json` 输出，以及标准表格输出。
+- 每张算力卡都会显示 **算力占用百分比** 和 **显存占卡比例**，不再只显示已用字节数。
 - **系统 Top 进程**：点击在线服务器卡片打开右侧详情抽屉时按需执行（远程 Linux 使用 `ps`，本机 Linux/macOS 使用 `ps`，Windows 使用轻量 `Get-Process`），纯只读展示。
 
 ## 服务器从哪来

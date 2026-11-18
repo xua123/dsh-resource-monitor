@@ -6,6 +6,7 @@
 <meta name="dsh-monitor-token" content="__MONITOR_TOKEN__">
 <title>服务器资源监控</title>
 <style>
+  [hidden] { display: none !important; }
   :root {
     color-scheme: light;
     --bg: #f4f6fb;
@@ -739,6 +740,7 @@
   if (theme === 'dark' || theme === 'light') document.documentElement.setAttribute('data-theme', theme)
   var isWorkspaceScope = params.get('scope') === 'workspace'
   var initialHostFilter = String(params.get('host') || '').trim()
+  var workspacePath = String(params.get('path') || '').trim()
   var wsKey = String(params.get('ws') || 'default').trim() || 'default'
   var wsStorageKey = 'dsh-resource-monitor:ws:' + wsKey
 
@@ -1503,8 +1505,8 @@
         visible = [targetEntry]
         els.clusterBar.hidden = true
       } else {
-        visible = sortEntries(entries.filter(function (entry) { return matches(entry, state.filter) }))
-        renderClusterBar(entries)
+        visible = []
+        els.clusterBar.hidden = true
       }
     } else {
       renderClusterBar(entries)
@@ -1515,6 +1517,15 @@
       els.listWrap.hidden = true
       els.grid.hidden = false
       els.empty.hidden = false
+      return
+    }
+
+    if (visible.length === 0) {
+      els.listWrap.hidden = true
+      els.grid.hidden = false
+      els.empty.hidden = false
+      var emptyTitle = els.empty.querySelector('h2')
+      if (emptyTitle) emptyTitle.textContent = isWorkspaceScope ? '当前工作区还没有绑定服务器' : '没有匹配的服务器'
       return
     }
 
@@ -2674,6 +2685,22 @@
       if (savedWsHost) state.wsBoundHost = savedWsHost
     } catch (e) {}
   }
+  // Resolve the workspace's local mirror (dsh-remote) to the matching host and
+  // bind the workspace tab to that one server.
+  if (isWorkspaceScope && !state.wsBoundHost && workspacePath) {
+    fetch('api/resolve-workspace?path=' + encodeURIComponent(workspacePath), { cache: 'no-store' })
+      .then(function (response) { return response.ok ? response.json() : null })
+      .then(function (body) {
+        var resolved = body && body.workspace
+        if (!resolved) return
+        var host = resolved.local ? 'local' : String(resolved.host || '').trim()
+        if (!host) return
+        state.wsBoundHost = host
+        try { localStorage.setItem(wsStorageKey, host) } catch (e) {}
+        render()
+      })
+      .catch(function () {})
+  }
   function enhanceSelect(selectEl) {
     if (!selectEl || selectEl._enhanced) return
     selectEl._enhanced = true
@@ -2750,6 +2777,22 @@
       var savedWsHost = localStorage.getItem(wsStorageKey)
       if (savedWsHost) state.wsBoundHost = savedWsHost
     } catch (e) {}
+  }
+  // Resolve the workspace's local mirror (dsh-remote) to the matching host and
+  // bind the workspace tab to that one server.
+  if (isWorkspaceScope && !state.wsBoundHost && workspacePath) {
+    fetch('api/resolve-workspace?path=' + encodeURIComponent(workspacePath), { cache: 'no-store' })
+      .then(function (response) { return response.ok ? response.json() : null })
+      .then(function (body) {
+        var resolved = body && body.workspace
+        if (!resolved) return
+        var host = resolved.local ? 'local' : String(resolved.host || '').trim()
+        if (!host) return
+        state.wsBoundHost = host
+        try { localStorage.setItem(wsStorageKey, host) } catch (e) {}
+        render()
+      })
+      .catch(function () {})
   }
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
   syncIntervalControls()
