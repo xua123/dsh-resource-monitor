@@ -24,7 +24,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.3.1.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.3.2.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -33,12 +33,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.3.1.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.3.2.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.3.1.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.3.2.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -79,9 +79,15 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 
 保存后，全局面板和工作区标签都只显示选中的工作区服务器；**手动添加的服务器始终显示**，不受这个开关影响。选择保存在 `~/.dsh/server-monitor/selection.json`。
 
+## 采集速度
+
+- 快照采用 **stale-while-revalidate**：页面先拿到上一份数据并立即渲染，服务端在后台刷新；慢的 `npu-smi` / `hy-smi` 主机不会把整个页面卡住几秒。
+- 默认刷新间隔 **5 秒**，首次加载约 1 秒返回（慢主机先显示“采集中”，下一次轮询补全）。
+- 只有手动点“刷新”时才等待一次完整采集。
+
 ## 工作区标签只显示绑定的服务器
 
-工作区标签会读取当前工作区的本地镜像元数据（`remote-workspaces/**/.dsh-remote-meta.json`），自动绑定到该工作区对应的 SSH 服务器，**只显示这一台**。
+工作区标签优先读取 `path`，没有 path 时按 **session id** 查找 DSH 会话目录，再映射到 dsh-remote 镜像的 `.dsh-remote-meta.json`，自动绑定到该工作区对应的 SSH 服务器，**只显示这一台**。
 
 - 解析不到时不再回退“显示全部”，而是提示当前工作区未绑定服务器；
 - 右上角下拉可以手动指定服务器；

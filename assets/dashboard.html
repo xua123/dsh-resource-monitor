@@ -578,7 +578,8 @@
         <label class="field" title="自动刷新间隔">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 1.8"></path></svg>
           <select id="interval" aria-label="刷新间隔">
-            <option value="10000">10 秒</option>
+            <option value="5000">5 秒</option>
+<option value="10000">10 秒</option>
             <option value="30000">30 秒</option>
             <option value="60000">60 秒</option>
             <option value="0">手动</option>
@@ -741,6 +742,7 @@
   var isWorkspaceScope = params.get('scope') === 'workspace'
   var initialHostFilter = String(params.get('host') || '').trim()
   var workspacePath = String(params.get('path') || '').trim()
+  var workspaceSession = String(params.get('session') || '').trim()
   var wsKey = String(params.get('ws') || 'default').trim() || 'default'
   var wsStorageKey = 'dsh-resource-monitor:ws:' + wsKey
 
@@ -759,7 +761,7 @@
     editingTargetId: null,
     wsShowAll: false,
     wsBoundHost: initialHostFilter,
-    interval: 10000,
+    interval: 5000,
     timer: null,
     ticker: null,
     drawerHostId: null,
@@ -2687,8 +2689,11 @@
   }
   // Resolve the workspace's local mirror (dsh-remote) to the matching host and
   // bind the workspace tab to that one server.
-  if (isWorkspaceScope && !state.wsBoundHost && workspacePath) {
-    fetch('api/resolve-workspace?path=' + encodeURIComponent(workspacePath), { cache: 'no-store' })
+  if (isWorkspaceScope && !state.wsBoundHost && (workspacePath || workspaceSession)) {
+    var resolveUrl = 'api/resolve-workspace?'
+    if (workspacePath) resolveUrl += 'path=' + encodeURIComponent(workspacePath)
+    if (workspaceSession) resolveUrl += (workspacePath ? '&' : '') + 'session=' + encodeURIComponent(workspaceSession)
+    fetch(resolveUrl, { cache: 'no-store' })
       .then(function (response) { return response.ok ? response.json() : null })
       .then(function (body) {
         var resolved = body && body.workspace
@@ -2780,8 +2785,11 @@
   }
   // Resolve the workspace's local mirror (dsh-remote) to the matching host and
   // bind the workspace tab to that one server.
-  if (isWorkspaceScope && !state.wsBoundHost && workspacePath) {
-    fetch('api/resolve-workspace?path=' + encodeURIComponent(workspacePath), { cache: 'no-store' })
+  if (isWorkspaceScope && !state.wsBoundHost && (workspacePath || workspaceSession)) {
+    var resolveUrl = 'api/resolve-workspace?'
+    if (workspacePath) resolveUrl += 'path=' + encodeURIComponent(workspacePath)
+    if (workspaceSession) resolveUrl += (workspacePath ? '&' : '') + 'session=' + encodeURIComponent(workspaceSession)
+    fetch(resolveUrl, { cache: 'no-store' })
       .then(function (response) { return response.ok ? response.json() : null })
       .then(function (body) {
         var resolved = body && body.workspace
