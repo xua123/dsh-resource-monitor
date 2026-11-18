@@ -611,7 +611,7 @@
     <div class="empty" id="empty" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.6"></rect><rect x="3" y="14" width="18" height="6" rx="1.6"></rect><path d="M7 7h.01M7 17h.01"></path></svg>
       <h2>还没有可显示的服务器</h2>
-      <p>请在 dsh-remote 中保存 SSH 主机，或在 <code>~/.ssh/config</code> 中配置服务器，然后刷新。</p>
+      <p>请在 <code>~/.ssh/config</code> 中配置服务器，或点右上角“添加服务器”，然后刷新。</p>
       <button class="btn" type="button" id="empty-refresh">重新采集</button>
     </div>
   </main>
@@ -661,7 +661,7 @@
         </div>
         <div class="target-list">
           <h3>显示范围</h3>
-          <p class="target-empty">来自 dsh-remote / SSH 配置的服务器默认全部显示。选择“仅显示选中”后，只展示勾选的服务器；手动添加的服务器始终显示。</p>
+          <p class="target-empty">来自 <code>~/.ssh/config</code> 的服务器默认全部显示。选择“仅显示选中”后，只展示勾选的服务器；手动添加的服务器始终显示。</p>
           <div class="scope-modes">
             <label><input type="radio" name="scope-mode" value="all"> 全部显示</label>
             <label><input type="radio" name="scope-mode" value="selected"> 仅显示选中的服务器</label>
@@ -741,8 +741,6 @@
   if (theme === 'dark' || theme === 'light') document.documentElement.setAttribute('data-theme', theme)
   var isWorkspaceScope = params.get('scope') === 'workspace'
   var initialHostFilter = String(params.get('host') || '').trim()
-  var workspacePath = String(params.get('path') || '').trim()
-  var workspaceSession = String(params.get('session') || '').trim()
   var wsKey = String(params.get('ws') || 'default').trim() || 'default'
   var wsStorageKey = 'dsh-resource-monitor:ws:' + wsKey
 
@@ -1120,7 +1118,7 @@
     if (entry.kind !== 'local') {
       var remove = el('button', 'card-remove')
       remove.type = 'button'
-      remove.title = entry.manualId ? '删除这台服务器' : '从监控列表移除（不修改 dsh-remote / ssh 配置）'
+      remove.title = entry.manualId ? '删除这台服务器' : '从监控列表移除（不修改 ~/.ssh/config）'
       remove.setAttribute('aria-label', '删除服务器')
       remove.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>'
       remove.addEventListener('click', function (event) {
@@ -1134,7 +1132,7 @@
 
     if (connecting) {
       var waiting = el('div', 'collecting', '正在通过 SSH 采集指标…')
-      waiting.title = entry.source === 'ssh-config' ? '来源：~/.ssh/config' : '来源：dsh-remote 已保存主机'
+      waiting.title = '来源：~/.ssh/config'
       node.appendChild(waiting)
     } else if (offline) {
       var box = el('div', 'error-box')
@@ -1545,9 +1543,8 @@
     var connecting = entries.filter(function (entry) { return entry.status === 'connecting' }).length
     var parts = ['<b>' + online + '</b> / ' + entries.length + ' 台在线']
     if (connecting > 0) parts.push(connecting + ' 台采集中')
-    if (data.sources && (data.sources.saved || data.sources.sshConfig || data.sources.manual)) {
+    if (data.sources && (data.sources.sshConfig || data.sources.manual)) {
       var src = []
-      if (data.sources.saved) src.push('已保存主机 ' + data.sources.saved)
       if (data.sources.sshConfig) src.push('SSH 配置 ' + data.sources.sshConfig)
       if (data.sources.manual) src.push('手动添加 ' + data.sources.manual)
       parts.push(src.join(' · '))
@@ -1564,7 +1561,7 @@
     parts.push(state.interval > 0 ? '每 ' + Math.round(state.interval / 1000) + ' 秒刷新' : '手动刷新')
     parts.push('更新于 ' + fmtRelative(state.lastUpdate))
     els.summary.innerHTML = parts.join(' · ')
-    els.summary.title = '数据来源：' + (data.sources ? (data.sources.savedFile || '') : '')
+    els.summary.title = '数据来源：' + (data.sources ? (data.sources.sshConfigFile || '') : '')
 
     var offlineNames = entries.filter(function (entry) { return entry.status === 'offline' }).map(function (entry) { return entry.name })
     var footParts = []
@@ -2130,7 +2127,7 @@
   function renderScope() {
     els.scopeRows.textContent = ''
     if (scopeState.candidates.length === 0) {
-      els.scopeRows.appendChild(el('div', 'target-empty', '没有可选的服务器（dsh-remote / SSH 配置里没有发现主机）。'))
+      els.scopeRows.appendChild(el('div', 'target-empty', '没有可选的服务器（~/.ssh/config 里没有发现主机）。'))
       return
     }
     scopeState.candidates.forEach(function (candidate) {
@@ -2149,7 +2146,7 @@
       who.appendChild(el('b', '', candidate.name || candidate.host))
       who.appendChild(document.createTextNode(' ' + (candidate.username || '') + '@' + candidate.host + ':' + candidate.port))
       row.appendChild(who)
-      row.appendChild(el('span', 'tag', candidate.source === 'ssh-config' ? 'SSH 配置' : 'dsh-remote'))
+      row.appendChild(el('span', 'tag', candidate.source === 'ssh-config' ? 'SSH 配置' : 'SSH 配置'))
       els.scopeRows.appendChild(row)
     })
   }
@@ -2213,7 +2210,7 @@
     var label = entry.name || entry.host
     var question = isManual
       ? '删除服务器“' + label + '”？密码 / 私钥会一起删除。'
-      : '从监控列表移除“' + label + '”？不会修改 dsh-remote 或 ~/.ssh/config，可稍后恢复。'
+      : '从监控列表移除“' + label + '”？不会修改 ~/.ssh/config，可稍后恢复。'
     if (!window.confirm(question)) return
     var request
     if (isManual) {
@@ -2687,25 +2684,6 @@
       if (savedWsHost) state.wsBoundHost = savedWsHost
     } catch (e) {}
   }
-  // Resolve the workspace's local mirror (dsh-remote) to the matching host and
-  // bind the workspace tab to that one server.
-  if (isWorkspaceScope && !state.wsBoundHost && (workspacePath || workspaceSession)) {
-    var resolveUrl = 'api/resolve-workspace?'
-    if (workspacePath) resolveUrl += 'path=' + encodeURIComponent(workspacePath)
-    if (workspaceSession) resolveUrl += (workspacePath ? '&' : '') + 'session=' + encodeURIComponent(workspaceSession)
-    fetch(resolveUrl, { cache: 'no-store' })
-      .then(function (response) { return response.ok ? response.json() : null })
-      .then(function (body) {
-        var resolved = body && body.workspace
-        if (!resolved) return
-        var host = resolved.local ? 'local' : String(resolved.host || '').trim()
-        if (!host) return
-        state.wsBoundHost = host
-        try { localStorage.setItem(wsStorageKey, host) } catch (e) {}
-        render()
-      })
-      .catch(function () {})
-  }
   function enhanceSelect(selectEl) {
     if (!selectEl || selectEl._enhanced) return
     selectEl._enhanced = true
@@ -2782,25 +2760,6 @@
       var savedWsHost = localStorage.getItem(wsStorageKey)
       if (savedWsHost) state.wsBoundHost = savedWsHost
     } catch (e) {}
-  }
-  // Resolve the workspace's local mirror (dsh-remote) to the matching host and
-  // bind the workspace tab to that one server.
-  if (isWorkspaceScope && !state.wsBoundHost && (workspacePath || workspaceSession)) {
-    var resolveUrl = 'api/resolve-workspace?'
-    if (workspacePath) resolveUrl += 'path=' + encodeURIComponent(workspacePath)
-    if (workspaceSession) resolveUrl += (workspacePath ? '&' : '') + 'session=' + encodeURIComponent(workspaceSession)
-    fetch(resolveUrl, { cache: 'no-store' })
-      .then(function (response) { return response.ok ? response.json() : null })
-      .then(function (body) {
-        var resolved = body && body.workspace
-        if (!resolved) return
-        var host = resolved.local ? 'local' : String(resolved.host || '').trim()
-        if (!host) return
-        state.wsBoundHost = host
-        try { localStorage.setItem(wsStorageKey, host) } catch (e) {}
-        render()
-      })
-      .catch(function () {})
   }
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
   syncIntervalControls()

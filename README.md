@@ -3,13 +3,14 @@
 在 DeepSeek Harness 的**左侧栏**打开「服务器资源」面板，实时查看本机与所有 SSH 服务器的 CPU、内存、磁盘及 **GPU / NPU / DCU** 算力卡占用，并支持点击卡片查看只读 **Top 进程**与**显存 / HBM 占用进程**。
 
 - 左侧栏新增服务器图标，点击在全局主面板打开监控页；**不占用会话标签页**。
-- 服务器来源自动合并：面板里手动添加的 SSH 主机 + `dsh-remote` 已保存主机 + `~/.ssh/config`。
+- 服务器来源：面板里手动添加的 SSH 主机 + 本地 `~/.ssh/config`。**不依赖 dsh-remote**，不需要安装或配置它。
 - 手动添加支持**密码**或**私钥**（粘贴私钥内容或选择私钥文件），保存后立即开始采集。
+- `~/.ssh/config` 支持 `Host` 别名、`HostName`、`User`、`Port`、`IdentityFile`、`Host *` 默认值和 `Include`；认证走你本机已有的密钥 / ssh-agent。
 - 每台服务器一张卡片：CPU、内存、磁盘（显示**已用 / 总容量**与峰值挂载点）、负载、运行时间、SSH 延迟，以及最近 40 次 CPU 采样的迷你曲线。
 - **异构算力卡（GPU / NPU / DCU）**：支持 NVIDIA GPU（`nvidia-smi`）、华为昇腾 NPU（`npu-smi`）、海光 DCU / AMD GPU（`hy-smi` / `rocm-smi`），逐卡展示**算力利用率**与**显存 / HBM 占用**双进度条、温度与功耗。
 - **只读进程与显存进程抽屉**：点击任意在线卡片打开右侧详情抽屉，查看类似 `top` 的系统进程（支持搜索、多列排序与迷你进度条）、各算力卡的显存 / HBM 占用进程明细以及完整磁盘分区列表；日常轮询不采集进程列表，对服务器几乎无额外负载。
 - **自定义名称与刷新间隔**：支持为本机和任意服务器设置自定义显示名称（IP / 连接地址固定附带且不可调整）；右上角支持 `10 秒 / 30 秒 / 60 秒 / 手动 / 自定义秒数` 刷新，页面隐藏时自动暂停轮询。
-- **卡片右上角可直接删除 / 移除服务器**：手动添加的会真正删除记录和私钥；来自 `dsh-remote` / `~/.ssh/config` 的只从监控列表隐藏，不会改动原配置，可在“添加服务器”弹窗里恢复。
+- **卡片右上角可直接删除 / 移除服务器**：手动添加的会真正删除记录和私钥；来自 `~/.ssh/config` 的只从监控列表隐藏，不会改动原配置，可在“添加服务器”弹窗里恢复。
 - **认证失败的主机默认隐藏**，避免刷屏；可在“添加服务器”弹窗里修改或删除。
 
 ![服务器资源监控预览](docs/preview.png)
@@ -24,7 +25,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.3.2.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.4.0.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -33,12 +34,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.3.2.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.4.0.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.3.2.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.4.0.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -70,7 +71,7 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 
 ## 只显示部分工作区服务器
 
-`dsh-remote` / `~/.ssh/config` 里的服务器默认全部显示。如果工作区里有很多主机，但只想监控其中几台：
+`~/.ssh/config` 里的服务器默认全部显示。如果配置里有很多主机，但只想监控其中几台：
 
 1. 打开 **添加服务器** 弹窗，拉到最下面的 **显示范围**。
 2. 选择 **仅显示选中的服务器**。
@@ -85,20 +86,22 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 - 默认刷新间隔 **5 秒**，首次加载约 1 秒返回（慢主机先显示“采集中”，下一次轮询补全）。
 - 只有手动点“刷新”时才等待一次完整采集。
 
-## 工作区标签只显示绑定的服务器
+## 工作区标签只显示选中的服务器
 
-工作区标签优先读取 `path`，没有 path 时按 **session id** 查找 DSH 会话目录，再映射到 dsh-remote 镜像的 `.dsh-remote-meta.json`，自动绑定到该工作区对应的 SSH 服务器，**只显示这一台**。
+工作区标签默认不显示全部主机，而是使用右上角的下拉框选择该工作区对应的 SSH 服务器：
 
-- 解析不到时不再回退“显示全部”，而是提示当前工作区未绑定服务器；
-- 右上角下拉可以手动指定服务器；
+- 选择结果按工作区保存在浏览器 localStorage，下次打开仍然生效；
+- 未选择时提示“当前工作区还没有绑定服务器”，不会回退显示全部；
 - 只有点“查看全部”时才显示全部服务器。
+
+> 本插件不再读取 dsh-remote 的镜像元数据，因此工作区与服务器的对应关系需要你在下拉框里手动选一次。
 
 ## 删除 / 隐藏服务器
 
 卡片右上角的垃圾桶按钮：
 
 - **手动添加的服务器**：真正删除 `targets.json` 里的记录，粘贴的私钥文件一并删除。
-- **dsh-remote / `~/.ssh/config` 的服务器**：只写入 `~/.dsh/server-monitor/hidden.json`，从监控列表隐藏，不会修改这些原始配置。
+- **`~/.ssh/config` 的服务器**：只写入 `~/.dsh/server-monitor/hidden.json`，从监控列表隐藏，不会修改 `~/.ssh/config`。
 - 打开“添加服务器”弹窗，底部“已隐藏的服务器”可以随时恢复。
 
 ## 异构算力卡（GPU / NPU / DCU）与进程监控
@@ -115,10 +118,9 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 | --- | --- | --- |
 | 手动添加 | 插件弹窗 | 支持密码 / 私钥，优先于同名主机 |
 | 本机 | — | Node `os` + `fs.statfs`，Windows/Linux/macOS |
-| dsh-remote 已保存主机 | `~/.dsh/remote-workspaces/machines.json` | 复用已保存的密码 / 密钥 / 端口 |
-| OpenSSH 配置 | `~/.ssh/config` | 只读取具体的 `Host` 块；不使用 `Host *` 默认值，也不处理 `ProxyJump` |
+| OpenSSH 配置 | `~/.ssh/config` | 支持 `HostName` / `User` / `Port` / `IdentityFile` / `Host *` 默认值 / `Include`；`ProxyJump`、`ProxyCommand` 暂不实现 |
 
-同一台机器（host + port 相同）只显示一张卡片；手动添加的记录优先。`machines.json` 里 `host` 字段被误写成显示名的坏记录会被跳过。
+同一台机器（host + port 相同）只显示一张卡片；手动添加的记录优先。插件不读取 `~/.dsh/remote-workspaces/machines.json`，也不需要安装 dsh-remote。
 
 ## 配置
 
@@ -128,18 +130,16 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 - id: dsh-resource-monitor
   name: dsh-resource-monitor
   config:
-    refreshMs: 10000         # 建议的浏览器刷新间隔（毫秒）
+    refreshMs: 5000          # 建议的浏览器刷新间隔（毫秒）
     cacheMs: 2500            # 服务端复用一次采集结果的时长
     errorCacheMs: 15000      # 失败主机的重试间隔
-    waitMs: 2500             # 单次请求最多等多久，超时先返回“采集中”
+    waitMs: 1200             # 单次请求最多等多久，超时先返回“采集中”
     maxConcurrent: 6         # 同时拨号的 SSH 主机数
     commandTimeoutMs: 12000  # 单条远程命令超时
     connectTimeoutMs: 8000   # SSH 握手超时
     idleCloseMs: 120000      # 空闲连接回收时间
     hideAuthFailures: true   # 隐藏认证失败的主机
-    includeSavedMachines: true
     includeSshConfig: true
-    machinesFile: ''         # 覆盖 machines.json 路径
     sshConfigFile: ''        # 覆盖 ~/.ssh/config 路径
     ignoreHosts: ['192.0.2.99', 'old-*']  # 支持 * 和 ?
     hostKeyPolicy: tofu      # tofu | off
@@ -188,7 +188,7 @@ npm run pack
 ```
 lib/index.js            Host 插件：快照缓存、并发拨号、HTTP 路由（快照/详情/目标/别名）
 lib/manual-targets.js   手动 SSH 目标、私钥、隐藏列表与自定义别名存储
-lib/machines.js         合并手动目标、dsh-remote 注册表与 ~/.ssh/config
+lib/machines.js         解析本地 ~/.ssh/config（含 Host * 默认值与 Include）
 lib/ssh.js              SSH 连接池、主机密钥 TOFU、错误分类
 lib/collect-local.js    本机 CPU / 内存 / 磁盘 / 算力卡及按需详情采集
 lib/collect-remote.js   Linux 远程采集脚本与按需进程/显存解析

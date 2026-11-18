@@ -1,7 +1,7 @@
 {
   "name": "dsh-resource-monitor",
-  "version": "0.3.2",
-  "description": "Server resource dashboard for DeepSeek Harness: live CPU / memory / disk / GPU / NPU / DCU usage, top processes and accelerator VRAM processes for the local host and SSH servers.",
+  "version": "0.4.0",
+  "description": "Server resource dashboard for DeepSeek Harness: live CPU / memory / disk / GPU / NPU / DCU usage, top processes and accelerator VRAM processes for the local host and servers from the local ~/.ssh/config.",
   "icon": "icon.svg",
   "author": "xua123",
   "repository": {
