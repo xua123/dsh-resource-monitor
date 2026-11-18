@@ -568,7 +568,7 @@
             <option value="default">默认排序</option>
             <option value="cpu">CPU 占用 ↓</option>
             <option value="mem">内存占用 ↓</option>
-            <option value="accel">利用率 ↓</option>
+            <option value="accel">平均利用率 ↓</option>
           </select>
         </label>
         <button class="btn" id="view-toggle" type="button" title="切换卡片 / 列表视图">列表视图</button>
@@ -576,6 +576,12 @@
           <select id="ws-bind" aria-label="工作区服务器"></select>
         </label>
         <button class="btn" id="ws-show-all" type="button" hidden title="切换只看工作区服务器或查看全部服务器">查看全部</button>
+        <label class="field" title="算力利用率平均窗口（秒，10-1800）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19V5M4 19h16"></path><path d="M8 15l3-4 3 2 4-6"></path></svg>
+          <span style="font-size:11px;color:var(--muted)">平均</span>
+          <input id="accel-window-sec" type="number" min="10" max="1800" step="10" value="60" aria-label="平均窗口秒数" style="width:48px;min-width:40px">
+          <span style="font-size:11px;color:var(--muted)">秒</span>
+        </label>
         <label class="field" title="自动刷新间隔">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 1.8"></path></svg>
           <select id="interval" aria-label="刷新间隔">
@@ -752,6 +758,7 @@
     lastUpdate: 0,
     history: Object.create(null),
     accelHistory: Object.create(null),
+    lastAccelStamp: 0,
     expandedAcc: Object.create(null),
     filter: '',
     kindFilter: 'all',
@@ -762,6 +769,7 @@
     wsShowAll: false,
     wsBoundHost: initialHostFilter,
     interval: 5000,
+    accelWindowMs: 60000,
     timer: null,
     ticker: null,
     drawerHostId: null,
@@ -792,6 +800,7 @@
     wsBind: document.getElementById('ws-bind'),
     wsShowAll: document.getElementById('ws-show-all'),
     interval: document.getElementById('interval'),
+    accelWindowSec: document.getElementById('accel-window-sec'),
     customIntervalWrap: document.getElementById('custom-interval-wrap'),
     customIntervalSec: document.getElementById('custom-interval-sec'),
     customIntervalApply: document.getElementById('custom-interval-apply'),
@@ -878,32 +887,39 @@
   /**
    * `nvidia-smi` / `npu-smi` report instantaneous utilization. Inference
    * workloads are bursty, so a 5s poll often catches 0% between requests even
-   * while VRAM stays allocated. Keep a 15s window and expose its peak.
+   * while VRAM stays allocated. Keep the configured rolling window and expose
+   * its average.
    */
   function trackAccelHistory(entries) {
     var now = Date.now()
+    var windowMs = Math.max(10000, Number(state.accelWindowMs) || 60000)
+    var stamp = state.data && state.data.generatedAt ? state.data.generatedAt : 0
+    var newSample = stamp !== 0 && state.lastAccelStamp !== stamp
+    if (newSample) state.lastAccelStamp = stamp
     entries.forEach(function (entry) {
       ;(entry.gpus || []).forEach(function (gpu) {
         var key = accelKey(entry, gpu)
         var list = state.accelHistory[key] || []
         var value = Number(gpu.utilization)
-        if (Number.isFinite(value)) list.push({ t: now, v: value })
-        while (list.length > 0 && now - list[0].t > 15000) list.shift()
+        if (newSample && Number.isFinite(value)) list.push({ t: now, v: value })
+        while (list.length > 0 && now - list[0].t > windowMs) list.shift()
         state.accelHistory[key] = list
         if (list.length > 0) {
-          var peak = list[0].v
-          for (var i = 1; i < list.length; i += 1) if (list[i].v > peak) peak = list[i].v
-          gpu.utilPeak = peak
+          var sum = 0
+          for (var i = 0; i < list.length; i += 1) sum += list[i].v
+          gpu.utilAvg = Math.round((sum / list.length) * 10) / 10
+          gpu.utilSamples = list.length
+          gpu.utilWindowMs = windowMs
         }
       })
     })
   }
 
-  /** Utilization to display: 15s peak when it is higher than this sample. */
+  /** Utilization to display: rolling average over the configured window. */
   function accelUtil(gpu) {
-    var peak = Number(gpu.utilPeak)
+    var average = Number(gpu.utilAvg)
+    if (Number.isFinite(average)) return average
     var current = Number(gpu.utilization)
-    if (Number.isFinite(peak) && (!Number.isFinite(current) || peak > current)) return peak
     return Number.isFinite(current) ? current : null
   }
 
@@ -1069,13 +1085,12 @@
     }
     gpuRow.appendChild(gpuTop)
 
-    var utilCurrent = Number(gpu.utilization)
-    var utilPeak = Number(gpu.utilPeak)
     var utilRow = el('div', 'acc-subhead acc-stat')
-    utilRow.appendChild(el('span', 'lbl', '利用率'))
+    utilRow.appendChild(el('span', 'lbl', '平均利用率'))
     var utilVal = el('span', 'val', fmtPct(accelUtil(gpu)))
-    if (Number.isFinite(utilPeak) && (!Number.isFinite(utilCurrent) || utilPeak > utilCurrent + 0.5)) {
-      utilVal.appendChild(el('em', '', Number.isFinite(utilCurrent) ? '当前 ' + fmtPct(utilCurrent) : '当前 —'))
+    if (gpu.utilSamples) {
+      var windowSec = Math.max(10, Math.round((Number(gpu.utilWindowMs) || state.accelWindowMs) / 1000))
+      utilVal.title = '最近 ' + windowSec + ' 秒内 ' + gpu.utilSamples + ' 个样本的平均值'
     }
     utilRow.appendChild(utilVal)
     gpuRow.appendChild(utilRow)
@@ -1965,7 +1980,7 @@
     if (gpus.length) {
       lines.push('- 算力卡:')
       gpus.forEach(function (g, i) {
-        lines.push('  - [' + accLabel(g.type) + ' #' + (g.index ?? i) + '] ' + g.name + ': 利用率 ' + fmtPct(accelUtil(g)) + ', 功耗 ' + (g.powerW != null ? Math.round(g.powerW) + ' W' + (g.powerLimit != null ? ' / ' + Math.round(g.powerLimit) + ' W' : '') : '—') + ', ' + (g.memoryLabel || '显存') + ' ' + fmtBytes(g.memoryUsed) + ' / ' + fmtBytes(g.memoryTotal) + ' (' + fmtPct(g.memoryPercent) + ')' + (g.temperature != null ? ', ' + g.temperature + '°C' : ''))
+        lines.push('  - [' + accLabel(g.type) + ' #' + (g.index ?? i) + '] ' + g.name + ': 平均利用率 ' + fmtPct(accelUtil(g)) + ', 功耗 ' + (g.powerW != null ? Math.round(g.powerW) + ' W' + (g.powerLimit != null ? ' / ' + Math.round(g.powerLimit) + ' W' : '') : '—') + ', ' + (g.memoryLabel || '显存') + ' ' + fmtBytes(g.memoryUsed) + ' / ' + fmtBytes(g.memoryTotal) + ' (' + fmtPct(g.memoryPercent) + ')' + (g.temperature != null ? ', ' + g.temperature + '°C' : ''))
       })
     }
     var procs = (state.drawerData && state.drawerData.processes) || []
@@ -2651,7 +2666,32 @@
       state.viewMode = savedView
       els.viewToggle.textContent = savedView === 'list' ? '卡片视图' : '列表视图'
     }
+    var savedAccelWindow = localStorage.getItem('dsh-resource-monitor:accel-window-sec')
+    if (savedAccelWindow !== null && savedAccelWindow !== '') {
+      state.accelWindowMs = Math.min(1800000, Math.max(10000, (Number(savedAccelWindow) || 60) * 1000))
+    }
   } catch (e) {}
+
+  function applyAccelWindowSec(raw, persist) {
+    var sec = Math.min(1800, Math.max(10, Math.round(Number(raw) || 60)))
+    state.accelWindowMs = sec * 1000
+    els.accelWindowSec.value = String(sec)
+    if (persist) {
+      try { localStorage.setItem('dsh-resource-monitor:accel-window-sec', String(sec)) } catch (e) {}
+    }
+    render()
+  }
+  els.accelWindowSec.value = String(Math.round(state.accelWindowMs / 1000))
+  els.accelWindowSec.addEventListener('change', function () {
+    applyAccelWindowSec(els.accelWindowSec.value, true)
+  })
+  els.accelWindowSec.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      applyAccelWindowSec(els.accelWindowSec.value, true)
+      els.accelWindowSec.blur()
+    }
+  })
   function enhanceSelect(selectEl) {
     if (!selectEl || selectEl._enhanced) return
     selectEl._enhanced = true
