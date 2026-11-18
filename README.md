@@ -24,7 +24,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.2.2.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.3.0.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -33,12 +33,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.2.2.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.3.0.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.2.2.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.3.0.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -63,9 +63,21 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 | 粘贴的私钥 | `~/.dsh/server-monitor/keys/<id>.key` | `0600` |
 | 隐藏服务器列表 | `~/.dsh/server-monitor/hidden.json` | `0600` |
 | 自定义服务器名称 | `~/.dsh/server-monitor/aliases.json` | `0600` |
+| 显示范围选择 | `~/.dsh/server-monitor/selection.json` | `0600` |
 | 主机密钥指纹（TOFU） | `~/.dsh/server-monitor/known-hosts.json` | 默认 |
 
 密码和私钥只保存在 Host 进程与上述本地文件中，**不会返回给浏览器**；写入接口还需要页面内注入的一次性令牌。
+
+## 只显示部分工作区服务器
+
+`dsh-remote` / `~/.ssh/config` 里的服务器默认全部显示。如果工作区里有很多主机，但只想监控其中几台：
+
+1. 打开 **添加服务器** 弹窗，拉到最下面的 **显示范围**。
+2. 选择 **仅显示选中的服务器**。
+3. 勾选需要监控的主机（可先点“全选/全不选”）。
+4. 点 **保存显示范围**。
+
+保存后，全局面板和工作区标签都只显示选中的工作区服务器；**手动添加的服务器始终显示**，不受这个开关影响。选择保存在 `~/.dsh/server-monitor/selection.json`。
 
 ## 删除 / 隐藏服务器
 

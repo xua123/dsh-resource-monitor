@@ -316,6 +316,13 @@
   }
   .target-row .danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
   .target-empty { padding: 10px 2px; font-size: 11px; color: var(--muted); }
+  .scope-modes { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 10px; font-size: 11px; color: var(--text-2); }
+  .scope-modes label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .scope-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-soft); font-size: 11px; }
+  .scope-row input[type="checkbox"] { width: 14px; height: 14px; flex: none; cursor: pointer; }
+  .scope-row .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .scope-row .who b { color: var(--text); font-weight: 600; }
+  .scope-row .tag { flex: none; }
   .target-row .restore {
     flex: none; border: 0; background: transparent; color: var(--accent);
     font: inherit; cursor: pointer; padding: 3px 5px; border-radius: 5px;
@@ -650,6 +657,21 @@
           <h3>已隐藏的服务器</h3>
           <div id="hidden-rows"></div>
         </div>
+        <div class="target-list">
+          <h3>显示范围</h3>
+          <p class="target-empty">来自 dsh-remote / SSH 配置的服务器默认全部显示。选择“仅显示选中”后，只展示勾选的服务器；手动添加的服务器始终显示。</p>
+          <div class="scope-modes">
+            <label><input type="radio" name="scope-mode" value="all"> 全部显示</label>
+            <label><input type="radio" name="scope-mode" value="selected"> 仅显示选中的服务器</label>
+          </div>
+          <div id="scope-rows"></div>
+          <div class="form-actions">
+            <button type="button" class="btn primary" id="scope-save">保存显示范围</button>
+            <button type="button" class="btn" id="scope-all">全选</button>
+            <button type="button" class="btn" id="scope-none">全不选</button>
+            <span class="form-msg" id="scope-msg"></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -780,6 +802,11 @@
     targetCancelEdit: document.getElementById('target-cancel-edit'),
     targetRows: document.getElementById('target-rows'),
     hiddenRows: document.getElementById('hidden-rows'),
+    scopeRows: document.getElementById('scope-rows'),
+    scopeSave: document.getElementById('scope-save'),
+    scopeAll: document.getElementById('scope-all'),
+    scopeNone: document.getElementById('scope-none'),
+    scopeMsg: document.getElementById('scope-msg'),
     targetMsg: document.getElementById('target-msg'),
     authSelect: document.querySelector('#target-form select[name="auth"]'),
     authPassword: document.getElementById('auth-password'),
@@ -1515,6 +1542,9 @@
     if (data.summary && data.summary.hiddenAuth > 0) {
       parts.push('已隐藏 ' + data.summary.hiddenAuth + ' 台认证失败')
     }
+    if (data.sources && data.sources.selectionMode === 'selected') {
+      parts.push('仅显示选中 ' + (data.sources.visible || 0) + ' 台')
+    }
     if (data.summary && data.summary.hiddenRemoved > 0) {
       parts.push('已移除 ' + data.summary.hiddenRemoved + ' 台')
     }
@@ -2072,6 +2102,94 @@
       })
   }
 
+  var scopeState = { mode: 'all', keys: [], candidates: [] }
+
+  function scopeMode() {
+    var checked = document.querySelector('input[name="scope-mode"]:checked')
+    return checked && checked.value === 'selected' ? 'selected' : 'all'
+  }
+
+  function setScopeMode(mode) {
+    var radios = document.querySelectorAll('input[name="scope-mode"]')
+    for (var i = 0; i < radios.length; i += 1) radios[i].checked = radios[i].value === mode
+  }
+
+  function renderScope() {
+    els.scopeRows.textContent = ''
+    if (scopeState.candidates.length === 0) {
+      els.scopeRows.appendChild(el('div', 'target-empty', '没有可选的服务器（dsh-remote / SSH 配置里没有发现主机）。'))
+      return
+    }
+    scopeState.candidates.forEach(function (candidate) {
+      var row = el('label', 'scope-row')
+      var box = document.createElement('input')
+      box.type = 'checkbox'
+      box.value = candidate.key
+      box.checked = scopeState.keys.indexOf(candidate.key) >= 0
+      box.addEventListener('change', function () {
+        var index = scopeState.keys.indexOf(candidate.key)
+        if (box.checked && index < 0) scopeState.keys.push(candidate.key)
+        if (!box.checked && index >= 0) scopeState.keys.splice(index, 1)
+      })
+      row.appendChild(box)
+      var who = el('div', 'who')
+      who.appendChild(el('b', '', candidate.name || candidate.host))
+      who.appendChild(document.createTextNode(' ' + (candidate.username || '') + '@' + candidate.host + ':' + candidate.port))
+      row.appendChild(who)
+      row.appendChild(el('span', 'tag', candidate.source === 'ssh-config' ? 'SSH 配置' : 'dsh-remote'))
+      els.scopeRows.appendChild(row)
+    })
+  }
+
+  function loadSelection() {
+    fetch('api/selection', { cache: 'no-store', headers: { accept: 'application/json' } })
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status)
+        return response.json()
+      })
+      .then(function (body) {
+        if (!body || body.ok !== true) throw new Error((body && body.error) || '加载失败')
+        scopeState.mode = body.selection && body.selection.mode === 'selected' ? 'selected' : 'all'
+        scopeState.keys = body.selection && Array.isArray(body.selection.keys) ? body.selection.keys.slice() : []
+        scopeState.candidates = Array.isArray(body.candidates) ? body.candidates : []
+        setScopeMode(scopeState.mode)
+        renderScope()
+      })
+      .catch(function (error) {
+        els.scopeRows.textContent = '加载失败：' + ((error && error.message) || String(error))
+      })
+  }
+
+  function saveScope() {
+    if (!writeToken) {
+      els.scopeMsg.textContent = '页面令牌缺失，请刷新页面后重试'
+      els.scopeMsg.className = 'form-msg error'
+      return
+    }
+    var keys = []
+    var boxes = els.scopeRows.querySelectorAll('input[type="checkbox"]')
+    for (var i = 0; i < boxes.length; i += 1) if (boxes[i].checked) keys.push(boxes[i].value)
+    els.scopeMsg.textContent = '保存中…'
+    els.scopeMsg.className = 'form-msg'
+    fetch('api/selection', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
+      body: JSON.stringify({ mode: scopeMode(), keys: keys }),
+    }).then(function (response) {
+      return response.json().then(function (body) { return { response: response, body: body } })
+    }).then(function (result) {
+      if (!result.response.ok || !result.body.ok) throw new Error(result.body.error || '保存失败')
+      scopeState.mode = result.body.selection.mode
+      scopeState.keys = result.body.selection.keys
+      els.scopeMsg.textContent = scopeState.mode === 'selected' ? '已保存：只显示选中的服务器' : '已保存：显示全部服务器'
+      els.scopeMsg.className = 'form-msg ok'
+      load(true)
+    }).catch(function (error) {
+      els.scopeMsg.textContent = (error && error.message) || String(error)
+      els.scopeMsg.className = 'form-msg error'
+    })
+  }
+
   /** Card trash button: manual targets are deleted, discovered ones are hidden. */
   function removeServer(entry) {
     if (!writeToken) {
@@ -2193,6 +2311,7 @@
     document.body.style.overflow = 'hidden'
     loadTargetList()
     loadHiddenList()
+    loadSelection()
     var host = els.targetForm.elements.host
     if (host) window.setTimeout(function () { host.focus() }, 30)
   }
@@ -2407,6 +2526,20 @@
 
   els.addTarget.addEventListener('click', openTargets)
   els.targetClose.addEventListener('click', closeTargets)
+  els.scopeSave.addEventListener('click', saveScope)
+  els.scopeAll.addEventListener('click', function () {
+    var boxes = els.scopeRows.querySelectorAll('input[type="checkbox"]')
+    scopeState.keys = []
+    for (var i = 0; i < boxes.length; i += 1) {
+      boxes[i].checked = true
+      scopeState.keys.push(boxes[i].value)
+    }
+  })
+  els.scopeNone.addEventListener('click', function () {
+    var boxes = els.scopeRows.querySelectorAll('input[type="checkbox"]')
+    scopeState.keys = []
+    for (var i = 0; i < boxes.length; i += 1) boxes[i].checked = false
+  })
   els.modal.addEventListener('click', function (event) {
     if (event.target === els.modal) closeTargets()
   })
