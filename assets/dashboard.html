@@ -576,12 +576,6 @@
           <select id="ws-bind" aria-label="工作区服务器"></select>
         </label>
         <button class="btn" id="ws-show-all" type="button" hidden title="切换只看工作区服务器或查看全部服务器">查看全部</button>
-        <label class="field" title="算力利用率平均窗口（秒，10-1800）">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19V5M4 19h16"></path><path d="M8 15l3-4 3 2 4-6"></path></svg>
-          <span style="font-size:11px;color:var(--muted)">平均</span>
-          <input id="accel-window-sec" type="number" min="10" max="1800" step="10" value="60" aria-label="平均窗口秒数" style="width:48px;min-width:40px">
-          <span style="font-size:11px;color:var(--muted)">秒</span>
-        </label>
         <label class="field" title="自动刷新间隔">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 1.8"></path></svg>
           <select id="interval" aria-label="刷新间隔">
@@ -768,8 +762,7 @@
     editingTargetId: null,
     wsShowAll: false,
     wsBoundHost: initialHostFilter,
-    interval: 5000,
-    accelWindowMs: 60000,
+    interval: 60000,
     timer: null,
     ticker: null,
     drawerHostId: null,
@@ -800,7 +793,6 @@
     wsBind: document.getElementById('ws-bind'),
     wsShowAll: document.getElementById('ws-show-all'),
     interval: document.getElementById('interval'),
-    accelWindowSec: document.getElementById('accel-window-sec'),
     customIntervalWrap: document.getElementById('custom-interval-wrap'),
     customIntervalSec: document.getElementById('custom-interval-sec'),
     customIntervalApply: document.getElementById('custom-interval-apply'),
@@ -892,7 +884,7 @@
    */
   function trackAccelHistory(entries) {
     var now = Date.now()
-    var windowMs = Math.max(10000, Number(state.accelWindowMs) || 60000)
+    var windowMs = state.interval > 0 ? Math.max(1000, state.interval) : 60000
     var stamp = state.data && state.data.generatedAt ? state.data.generatedAt : 0
     var newSample = stamp !== 0 && state.lastAccelStamp !== stamp
     if (newSample) state.lastAccelStamp = stamp
@@ -1090,8 +1082,7 @@
     var utilVal = el('span', 'val', fmtPct(accelUtil(gpu)))
     if (gpu.utilSamples) {
       var windowSec = Math.max(10, Math.round((Number(gpu.utilWindowMs) || state.accelWindowMs) / 1000))
-      utilVal.title = '最近 ' + windowSec + ' 秒内 ' + gpu.utilSamples + ' 个样本的平均值'
-    }
+      utilVal.title = '最近 ' + windowSec + ' 秒内 ' + gpu.utilSamples + ' 个样本的平均值'    }
     utilRow.appendChild(utilVal)
     gpuRow.appendChild(utilRow)
 
@@ -2463,7 +2454,11 @@
   function load(force) {
     if (state.busy) return
     setBusy(true)
-    var url = 'api/snapshot' + (force ? '?force=1' : '')
+    var url = 'api/snapshot'
+    var params = []
+    if (force) params.push('force=1')
+    if (isWorkspaceScope && !state.wsShowAll && state.wsBoundHost) params.push('host=' + encodeURIComponent(state.wsBoundHost))
+    if (params.length > 0) url += '?' + params.join('&')
     fetch(url, { cache: 'no-store', headers: { accept: 'application/json' } })
       .then(function (response) {
         if (!response.ok) throw new Error('采集服务返回 HTTP ' + response.status)
@@ -2666,32 +2661,8 @@
       state.viewMode = savedView
       els.viewToggle.textContent = savedView === 'list' ? '卡片视图' : '列表视图'
     }
-    var savedAccelWindow = localStorage.getItem('dsh-resource-monitor:accel-window-sec')
-    if (savedAccelWindow !== null && savedAccelWindow !== '') {
-      state.accelWindowMs = Math.min(1800000, Math.max(10000, (Number(savedAccelWindow) || 60) * 1000))
-    }
   } catch (e) {}
 
-  function applyAccelWindowSec(raw, persist) {
-    var sec = Math.min(1800, Math.max(10, Math.round(Number(raw) || 60)))
-    state.accelWindowMs = sec * 1000
-    els.accelWindowSec.value = String(sec)
-    if (persist) {
-      try { localStorage.setItem('dsh-resource-monitor:accel-window-sec', String(sec)) } catch (e) {}
-    }
-    render()
-  }
-  els.accelWindowSec.value = String(Math.round(state.accelWindowMs / 1000))
-  els.accelWindowSec.addEventListener('change', function () {
-    applyAccelWindowSec(els.accelWindowSec.value, true)
-  })
-  els.accelWindowSec.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      applyAccelWindowSec(els.accelWindowSec.value, true)
-      els.accelWindowSec.blur()
-    }
-  })
   function enhanceSelect(selectEl) {
     if (!selectEl || selectEl._enhanced) return
     selectEl._enhanced = true
@@ -2768,10 +2739,12 @@
       else localStorage.removeItem(wsStorageKey)
     } catch (e) {}
     render()
+    load(true)
   })
   els.wsShowAll.addEventListener('click', function () {
     state.wsShowAll = !state.wsShowAll
     render()
+    load(true)
   })
 
   document.addEventListener('click', closeAllSelects)

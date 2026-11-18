@@ -25,7 +25,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.5.0.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.6.0.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -34,12 +34,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.5.0.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.6.0.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.5.0.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.6.0.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -83,13 +83,14 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 ## 采集速度
 
 - 快照采用 **stale-while-revalidate**：页面先拿到上一份数据并立即渲染，服务端在后台刷新；慢的 `npu-smi` / `hy-smi` 主机不会把整个页面卡住几秒。
-- 默认刷新间隔 **5 秒**，首次加载约 1 秒返回（慢主机先显示“采集中”，下一次轮询补全）。
+- 默认刷新间隔 **60 秒**（平均利用率使用同一个间隔作为窗口），首次加载约 1 秒返回（慢主机先显示“采集中”，下一次轮询补全）。
 - 只有手动点“刷新”时才等待一次完整采集。
 
 ## 工作区标签只显示选中的服务器
 
 工作区标签默认不显示全部主机，而是使用右上角的下拉框选择该工作区对应的 SSH 服务器：
 
+- 选中后会按该主机单独请求快照，**不受全局“仅显示选中”白名单、隐藏列表或认证失败隐藏的影响**；认证失败时也会显示错误原因，而不是空白；
 - 选择结果按工作区保存在浏览器 localStorage，下次打开仍然生效；
 - 未选择时提示“当前工作区还没有绑定服务器”，不会回退显示全部；
 - 只有点“查看全部”时才显示全部服务器。
@@ -116,10 +117,10 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 
 `nvidia-smi` / `npu-smi` / `hy-smi` 返回的是**瞬时利用率**。推理服务在请求间隙没有 kernel 在执行时，利用率就是 0%，但显存仍被模型进程占用——所以会出现“显存 88%、利用率 0%”的现象，不是统计错误。
 
-插件按页面刷新间隔采样，并保留最近 **N 秒**的样本做滚动平均：
+插件按页面刷新间隔采样，并保留最近 **一个刷新间隔** 的样本做滚动平均：
 
-- 默认窗口 **60 秒**；
-- 顶部「平均 [60] 秒」可以调整，范围 **10–1800 秒**（秒到分钟级别）；
+- 默认刷新间隔 **60 秒**，平均计算也使用这 60 秒；
+- 顶部刷新间隔支持 `5 秒 / 10 秒 / 30 秒 / 60 秒 / 手动 / 自定义秒数`，改一次即同时改变刷新和平均窗口；
 - 点击“刷新”或到达刷新间隔都会重新采样并更新平均值；
 - 初次加载立即采样，窗口未填满时按已有样本计算平均。
 
@@ -135,6 +136,16 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 
 同一台机器（host + port 相同）只显示一张卡片；手动添加的记录优先。插件不读取 `~/.dsh/remote-workspaces/machines.json`，也不需要安装 dsh-remote。
 
+### 为什么只看到几台服务器
+
+`~/.ssh/config` 只提供地址、用户名、端口和密钥路径，**不保存密码**。如果某些主机没有配置 `IdentityFile`，也没有把公钥放进 ssh-agent / authorized_keys，认证就会失败；认证失败的主机默认被隐藏，所以看起来“只剩几台”。
+
+排查：
+
+1. 打开“添加服务器”弹窗，看“显示范围”里能列出多少台，以及哪些失败；
+2. 在 `~/.ssh/config` 给主机加 `IdentityFile ~/.ssh/xxx`，或把密码主机在面板里手动添加；
+3. 或者把配置里的 `hideAuthFailures` 设为 `false`，先把失败原因显示出来。
+
 ## 配置
 
 在 profile 的 `cordis.yml` / `cordis.patch.yml` 里给这一行加 `config`：
@@ -143,7 +154,7 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 - id: dsh-resource-monitor
   name: dsh-resource-monitor
   config:
-    refreshMs: 5000          # 建议的浏览器刷新间隔（毫秒）
+    refreshMs: 60000         # 建议的浏览器刷新间隔（毫秒），同时作为平均窗口
     cacheMs: 2500            # 服务端复用一次采集结果的时长
     errorCacheMs: 15000      # 失败主机的重试间隔
     waitMs: 1200             # 单次请求最多等多久，超时先返回“采集中”
