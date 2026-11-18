@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.npm-cache/
+.shots/
+.edge-profile/
+*.tgz
+*.log
+.DS_Store
+Thumbs.db

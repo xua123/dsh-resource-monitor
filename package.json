@@ -1,0 +1,63 @@
+{
+  "name": "dsh-server-monitor",
+  "version": "0.1.4",
+  "description": "Server resource dashboard for DeepSeek Harness: live CPU / memory / disk usage for the local host and every saved SSH server, in a conversation tab and the right sidebar.",
+  "icon": "icon.svg",
+  "author": "xua123",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xua123/dsh-server-monitor.git"
+  },
+  "homepage": "https://github.com/xua123/dsh-server-monitor#readme",
+  "bugs": {
+    "url": "https://github.com/xua123/dsh-server-monitor/issues"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "lib",
+    "assets",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "monitor",
+    "ssh",
+    "server",
+    "resources"
+  ],
+  "license": "MIT",
+  "engines": {
+    "dsh": ">=0.2.1-rc.1"
+  },
+  "scripts": {
+    "pack": "npm pack --pack-destination dist"
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  }
+}

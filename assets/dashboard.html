@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>服务器资源监控</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f6fb;
+    --bg-soft: #eef1f8;
+    --card: #ffffff;
+    --card-soft: #f7f9fd;
+    --text: #18202e;
+    --text-2: #46536a;
+    --muted: #75829a;
+    --border: #e2e7f1;
+    --track: #e8edf6;
+    --accent: #3b7cf6;
+    --accent-2: #6f5bff;
+    --ok: #1f9d68;
+    --warn: #c9821a;
+    --danger: #d64545;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 8px 24px rgba(16, 24, 40, .06);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0f1218;
+      --bg-soft: #141821;
+      --card: #171c26;
+      --card-soft: #1c222e;
+      --text: #e9eef8;
+      --text-2: #b3bed2;
+      --muted: #7f8ba1;
+      --border: #262e3d;
+      --track: #232b39;
+      --accent: #5b9bff;
+      --accent-2: #8b7bff;
+      --ok: #3fc38c;
+      --warn: #e8ad4d;
+      --danger: #f06a6a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .28);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1218;
+    --bg-soft: #141821;
+    --card: #171c26;
+    --card-soft: #1c222e;
+    --text: #e9eef8;
+    --text-2: #b3bed2;
+    --muted: #7f8ba1;
+    --border: #262e3d;
+    --track: #232b39;
+    --accent: #5b9bff;
+    --accent-2: #8b7bff;
+    --ok: #3fc38c;
+    --warn: #e8ad4d;
+    --danger: #f06a6a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .28);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background:
+      radial-gradient(1200px 500px at 80% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+      var(--bg);
+    color: var(--text);
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+  header.top {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 84%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .top-inner { padding: 14px 18px 12px; display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1 1 260px; }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 11px; flex: none;
+    display: grid; place-items: center;
+    background: linear-gradient(145deg, var(--accent), var(--accent-2));
+    color: #fff; box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .brand-mark svg { width: 21px; height: 21px; }
+  h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: .2px; }
+  .sub { margin: 1px 0 0; font-size: 11.5px; color: var(--muted); }
+  .sub b { color: var(--text-2); font-weight: 600; }
+  .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+  .field {
+    display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 9px;
+    color: var(--muted); font-size: 12px; box-shadow: 0 1px 1px rgba(0,0,0,.03);
+  }
+  .field svg { width: 14px; height: 14px; flex: none; }
+  .field input {
+    border: 0; outline: 0; background: transparent; color: var(--text);
+    font: inherit; width: 132px; min-width: 60px;
+  }
+  .field input::placeholder { color: var(--muted); }
+  select {
+    appearance: none; border: 0; background: transparent; color: var(--text);
+    font: inherit; outline: 0; cursor: pointer; padding-right: 2px;
+  }
+  select option { color: #18202e; background: #fff; }
+  button.btn {
+    height: 32px; display: inline-flex; align-items: center; gap: 6px;
+    padding: 0 12px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font: inherit; font-weight: 600;
+    cursor: pointer; transition: background .15s ease, transform .1s ease, border-color .15s ease;
+  }
+  button.btn:hover { background: var(--card-soft); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  button.btn:active { transform: translateY(1px); }
+  button.btn.primary {
+    border-color: transparent; color: #fff;
+    background: linear-gradient(145deg, var(--accent), var(--accent-2));
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  button.btn.primary:hover { filter: brightness(1.06); }
+  button.btn svg { width: 14px; height: 14px; }
+  button.btn[disabled] { opacity: .55; cursor: default; }
+  .spin svg { animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .banner {
+    margin: 12px 18px 0; padding: 9px 12px; border-radius: 10px; font-size: 12px;
+    color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--card));
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border));
+  }
+  .banner[hidden] { display: none; }
+
+  main { flex: 1; padding: 16px 18px 26px; }
+  .grid {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(292px, 1fr));
+    align-items: stretch;
+  }
+
+  .card {
+    position: relative; display: flex; flex-direction: column; min-width: 0;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 13px 14px 11px; overflow: hidden;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .card:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 26%, var(--border)); }
+  .card::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2) 55%, transparent);
+    opacity: .85;
+  }
+  .card.local::before { background: linear-gradient(90deg, #8b7bff, #5b9bff 60%, transparent); }
+  .card.offline::before { background: linear-gradient(90deg, var(--danger), color-mix(in srgb, var(--danger) 35%, transparent) 65%, transparent); }
+  .card.connecting::before { background: linear-gradient(90deg, var(--warn), color-mix(in srgb, var(--warn) 30%, transparent) 65%, transparent); }
+  .card.critical { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+
+  .card-head { display: flex; align-items: flex-start; gap: 9px; min-width: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
+  .card.offline .dot { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent); }
+  .card.connecting .dot { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 18%, transparent); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  .head-body { min-width: 0; flex: 1; }
+  .name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .name { font-size: 13.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag {
+    flex: none; font-size: 10px; line-height: 16px; padding: 0 6px; border-radius: 5px;
+    color: var(--muted); background: var(--bg-soft); border: 1px solid var(--border);
+  }
+  .tag.local { color: color-mix(in srgb, var(--accent-2) 75%, var(--text)); border-color: color-mix(in srgb, var(--accent-2) 28%, var(--border)); background: color-mix(in srgb, var(--accent-2) 10%, var(--card)); }
+  .tag.os { color: var(--text-2); }
+  .host-line { margin-top: 2px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+
+  .metrics { margin-top: 11px; display: flex; flex-direction: column; gap: 9px; }
+  .metric-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .metric-label { font-size: 11px; color: var(--muted); letter-spacing: .3px; }
+  .metric-val { font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .metric-val em { font-style: normal; font-weight: 500; font-size: 10.5px; color: var(--muted); margin-left: 5px; }
+  .bar { height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .55s cubic-bezier(.22,.61,.36,1); }
+  .bar > i.ok { background: linear-gradient(90deg, color-mix(in srgb, var(--ok) 78%, var(--accent)), var(--ok)); }
+  .bar > i.warn { background: linear-gradient(90deg, color-mix(in srgb, var(--warn) 70%, var(--accent)), var(--warn)); }
+  .bar > i.bad { background: linear-gradient(90deg, color-mix(in srgb, var(--danger) 78%, var(--warn)), var(--danger)); }
+  .metric-note { margin-top: 3px; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .metric-note.warn { color: var(--warn); }
+  .metric-note.bad { color: var(--danger); }
+
+  .card-foot {
+    margin-top: 11px; padding-top: 9px; border-top: 1px dashed var(--border);
+    display: flex; align-items: flex-end; gap: 8px 12px; flex-wrap: wrap;
+    font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .card-foot span { white-space: nowrap; }
+  .card-foot b { color: var(--text-2); font-weight: 600; }
+  .spark { margin-left: auto; flex: none; opacity: .9; }
+  .spark svg { display: block; width: 88px; height: 24px; overflow: visible; }
+
+  .error-box {
+    margin-top: 9px; padding: 7px 9px; border-radius: 8px; font-size: 11px; line-height: 1.45;
+    color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--card));
+    border: 1px solid color-mix(in srgb, var(--danger) 24%, var(--border));
+    overflow-wrap: anywhere;
+  }
+  .error-box .stale-note { display: block; color: var(--muted); margin-top: 2px; }
+  .collecting {
+    margin-top: 12px; padding: 14px 10px; border-radius: 9px; text-align: center;
+    font-size: 11.5px; color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 8%, var(--card));
+    border: 1px dashed color-mix(in srgb, var(--warn) 32%, var(--border));
+  }
+
+  .empty {
+    margin: 48px auto; max-width: 420px; text-align: center; color: var(--muted);
+  }
+  .empty svg { width: 42px; height: 42px; opacity: .5; }
+  .empty h2 { margin: 10px 0 4px; font-size: 14px; color: var(--text-2); }
+  .empty p { margin: 0; font-size: 12px; }
+  .empty button { margin-top: 14px; }
+  .empty[hidden] { display: none; }
+
+  .skeleton { pointer-events: none; }
+  .sk-line { height: 11px; border-radius: 6px; background: linear-gradient(90deg, var(--track), color-mix(in srgb, var(--track) 55%, var(--card)), var(--track)); background-size: 200% 100%; animation: shimmer 1.3s ease-in-out infinite; margin-bottom: 9px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  footer.foot { padding: 0 18px 18px; color: var(--muted); font-size: 10.5px; }
+  footer.foot code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10px; }
+
+  @media (max-width: 640px) {
+    .top-inner { padding: 12px 14px 10px; }
+    main { padding: 12px 14px 22px; }
+    .grid { grid-template-columns: 1fr; }
+    .actions { width: 100%; justify-content: flex-start; }
+    .field input { width: 100px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bar > i, .card, button.btn { transition: none; }
+    .sk-line { animation: none; }
+    .spin svg { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="6" rx="1.6"></rect>
+            <rect x="3" y="14" width="18" height="6" rx="1.6"></rect>
+            <path d="M7 7h.01M7 17h.01"></path>
+          </svg>
+        </div>
+        <div style="min-width:0">
+          <h1>服务器资源监控</h1>
+          <p class="sub" id="summary" aria-live="polite">正在连接采集服务…</p>
+        </div>
+      </div>
+      <div class="actions">
+        <label class="field" title="按名称或地址筛选">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+          <input id="q" type="search" placeholder="筛选服务器" autocomplete="off">
+        </label>
+        <label class="field" title="自动刷新间隔">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 1.8"></path></svg>
+          <select id="interval" aria-label="刷新间隔">
+            <option value="3000">3 秒</option>
+            <option value="5000">5 秒</option>
+            <option value="10000">10 秒</option>
+            <option value="30000">30 秒</option>
+            <option value="0">手动</option>
+          </select>
+        </label>
+        <button class="btn primary" id="refresh" type="button" title="立即刷新">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.1"></path><path d="M20 4v7h-7"></path></svg>
+          刷新
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <main>
+    <div class="grid" id="grid" aria-live="polite"></div>
+    <div class="empty" id="empty" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.6"></rect><rect x="3" y="14" width="18" height="6" rx="1.6"></rect><path d="M7 7h.01M7 17h.01"></path></svg>
+      <h2>还没有可显示的服务器</h2>
+      <p>请在 dsh-remote 中保存 SSH 主机，或在 <code>~/.ssh/config</code> 中配置服务器，然后刷新。</p>
+      <button class="btn" type="button" id="empty-refresh">重新采集</button>
+    </div>
+  </main>
+
+  <footer class="foot" id="foot"></footer>
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  var params = new URLSearchParams(location.search)
+  var theme = params.get('theme')
+  if (theme === 'dark' || theme === 'light') document.documentElement.setAttribute('data-theme', theme)
+
+  var state = {
+    data: null,
+    error: null,
+    busy: false,
+    lastUpdate: 0,
+    history: Object.create(null),
+    filter: '',
+    interval: 5000,
+    timer: null,
+    ticker: null
+  }
+
+  var els = {
+    grid: document.getElementById('grid'),
+    empty: document.getElementById('empty'),
+    summary: document.getElementById('summary'),
+    banner: document.getElementById('banner'),
+    foot: document.getElementById('foot'),
+    q: document.getElementById('q'),
+    interval: document.getElementById('interval'),
+    refresh: document.getElementById('refresh'),
+    emptyRefresh: document.getElementById('empty-refresh')
+  }
+
+  var ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 8v5"></path><circle cx="12" cy="16.6" r=".9" fill="currentColor"></circle><circle cx="12" cy="12" r="9"></circle></svg>'
+
+  function el(tag, cls, text) {
+    var node = document.createElement(tag)
+    if (cls) node.className = cls
+    if (text !== undefined && text !== null) node.textContent = String(text)
+    return node
+  }
+
+  function clampPct(value) {
+    var n = Number(value)
+    if (!Number.isFinite(n)) return null
+    return Math.min(100, Math.max(0, n))
+  }
+
+  function fmtPct(value) {
+    var n = clampPct(value)
+    if (n === null) return '—'
+    return (n >= 10 ? Math.round(n) : Math.round(n * 10) / 10) + '%'
+  }
+
+  function fmtBytes(bytes) {
+    var n = Number(bytes)
+    if (!Number.isFinite(n) || n < 0) return '—'
+    var units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+    var i = 0
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i += 1 }
+    var digits = n >= 100 ? 0 : n >= 10 ? 1 : 2
+    return n.toFixed(digits).replace(/\.0+$/, '') + ' ' + units[i]
+  }
+
+  function fmtUptime(seconds) {
+    var s = Number(seconds)
+    if (!Number.isFinite(s) || s < 0) return '—'
+    var d = Math.floor(s / 86400)
+    var h = Math.floor((s % 86400) / 3600)
+    var m = Math.floor((s % 3600) / 60)
+    if (d > 0) return d + ' 天 ' + h + ' 小时'
+    if (h > 0) return h + ' 小时 ' + m + ' 分'
+    return Math.max(1, m) + ' 分'
+  }
+
+  function fmtLoad(load) {
+    if (!Array.isArray(load) || load.length < 3) return null
+    return load.slice(0, 3).map(function (value) { return Number(value).toFixed(2) }).join(' / ')
+  }
+
+  function fmtRelative(ts) {
+    var t = Number(ts)
+    if (!Number.isFinite(t) || t <= 0) return '—'
+    var diff = Math.max(0, Date.now() - t)
+    if (diff < 1500) return '刚刚'
+    if (diff < 60000) return Math.round(diff / 1000) + ' 秒前'
+    if (diff < 3600000) return Math.round(diff / 60000) + ' 分钟前'
+    if (diff < 86400000) return Math.round(diff / 3600000) + ' 小时前'
+    return Math.round(diff / 86400000) + ' 天前'
+  }
+
+  function toneFor(pct) {
+    var n = clampPct(pct)
+    if (n === null) return ''
+    if (n >= 88) return 'bad'
+    if (n >= 70) return 'warn'
+    return 'ok'
+  }
+
+  function metric(label, pct, note, noteTone) {
+    var row = el('div', 'metric')
+    var head = el('div', 'metric-head')
+    head.appendChild(el('span', 'metric-label', label))
+    var value = el('span', 'metric-val', fmtPct(pct))
+    if (note && note.short) {
+      var em = el('em', '', note.short)
+      value.appendChild(em)
+    }
+    head.appendChild(value)
+    row.appendChild(head)
+    var bar = el('div', 'bar')
+    var fill = el('i', toneFor(pct))
+    fill.style.width = (clampPct(pct) === null ? 0 : clampPct(pct)) + '%'
+    bar.appendChild(fill)
+    row.appendChild(bar)
+    if (note && note.text) {
+      var noteEl = el('div', 'metric-note' + (noteTone ? ' ' + noteTone : ''), note.text)
+      noteEl.title = note.text
+      row.appendChild(noteEl)
+    }
+    return row
+  }
+
+  function sparkline(entry) {
+    var key = entry.id
+    var history = state.history[key] || []
+    if (entry.status === 'online' && entry.cpu && entry.cpu.usage !== null && entry.cpu.usage !== undefined) {
+      history.push(clampPct(entry.cpu.usage) || 0)
+      if (history.length > 40) history.shift()
+      state.history[key] = history
+    }
+    var points = state.history[key] || []
+    if (points.length < 2) return null
+    var w = 88
+    var h = 24
+    var max = Math.max(30, Math.max.apply(null, points))
+    var step = w / (points.length - 1)
+    var coords = points.map(function (value, index) {
+      return (index * step).toFixed(1) + ',' + (h - (Math.min(max, value) / max) * (h - 3) - 1.5).toFixed(1)
+    })
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h)
+    svg.setAttribute('preserveAspectRatio', 'none')
+    svg.setAttribute('aria-hidden', 'true')
+    var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs')
+    var grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient')
+    grad.setAttribute('id', 'sg-' + String(key).replace(/[^a-zA-Z0-9_-]/g, ''))
+    grad.setAttribute('x1', '0'); grad.setAttribute('y1', '0'); grad.setAttribute('x2', '1'); grad.setAttribute('y2', '0')
+    var stops = [['0', 'var(--accent)'], ['1', 'var(--accent-2)']]
+    stops.forEach(function (pair) {
+      var stop = document.createElementNS('http://www.w3.org/2000/svg', 'stop')
+      stop.setAttribute('offset', pair[0])
+      stop.setAttribute('stop-color', pair[1])
+      grad.appendChild(stop)
+    })
+    defs.appendChild(grad)
+    svg.appendChild(defs)
+    var line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
+    line.setAttribute('points', coords.join(' '))
+    line.setAttribute('fill', 'none')
+    line.setAttribute('stroke', 'url(#sg-' + String(key).replace(/[^a-zA-Z0-9_-]/g, '') + ')')
+    line.setAttribute('stroke-width', '1.6')
+    line.setAttribute('stroke-linejoin', 'round')
+    line.setAttribute('stroke-linecap', 'round')
+    svg.appendChild(line)
+    var wrap = el('div', 'spark')
+    wrap.title = '最近 ' + points.length + ' 次 CPU 采样'
+    wrap.appendChild(svg)
+    return wrap
+  }
+
+  function card(entry) {
+    var offline = entry.status === 'offline'
+    var connecting = entry.status === 'connecting'
+    var critical = !offline && !connecting && (Number(entry.disk && entry.disk.percent) >= 92 || Number(entry.memory && entry.memory.percent) >= 92)
+    var node = el('article', 'card' + (offline ? ' offline' : '') + (connecting ? ' connecting' : '') + (entry.kind === 'local' ? ' local' : '') + (critical ? ' critical' : ''))
+
+    var head = el('div', 'card-head')
+    head.appendChild(el('span', 'dot'))
+    var body = el('div', 'head-body')
+    var nameRow = el('div', 'name-row')
+    var name = el('span', 'name', entry.name || entry.host || '未命名')
+    name.title = entry.name || entry.host || ''
+    nameRow.appendChild(name)
+    if (entry.kind === 'local') nameRow.appendChild(el('span', 'tag local', '本机'))
+    var platformText = entry.platform === 'windows' ? 'Windows'
+      : entry.platform === 'macos' ? 'macOS'
+      : entry.platform === 'linux' ? 'Linux' : (entry.platform || 'SSH')
+    if (!offline || entry.osName) nameRow.appendChild(el('span', 'tag os', platformText))
+    body.appendChild(nameRow)
+
+    var hostText
+    if (entry.kind === 'local') {
+      hostText = [entry.hostname || entry.host, entry.osName].filter(Boolean).join(' · ') || '本机'
+    } else {
+      var who = entry.username ? entry.username + '@' : ''
+      hostText = who + (entry.host || '') + (entry.port ? ':' + entry.port : '')
+      if (entry.hostname && entry.hostname !== entry.host) hostText += ' · ' + entry.hostname
+    }
+    var hostLine = el('div', 'host-line', hostText)
+    hostLine.title = hostText
+    body.appendChild(hostLine)
+    head.appendChild(body)
+    node.appendChild(head)
+
+    if (connecting) {
+      var waiting = el('div', 'collecting', '正在通过 SSH 采集指标…')
+      waiting.title = entry.source === 'ssh-config' ? '来源：~/.ssh/config' : '来源：dsh-remote 已保存主机'
+      node.appendChild(waiting)
+    } else if (offline) {
+      var box = el('div', 'error-box')
+      var message = (entry.error && entry.error.message) || '离线'
+      box.appendChild(document.createTextNode(message))
+      if (entry.stale && entry.lastSuccessAt) {
+        box.appendChild(el('span', 'stale-note', '显示的是 ' + fmtRelative(entry.lastSuccessAt) + '的最后一次数据'))
+      }
+      node.appendChild(box)
+    } else {
+      var cpu = entry.cpu || {}
+      var cores = cpu.cores ? cpu.cores + ' 核' : ''
+      var metrics = el('div', 'metrics')
+      metrics.appendChild(metric('CPU', cpu.usage, {
+        short: cores,
+        text: entry.kind === 'local' ? (cpu.model || '') : (entry.load ? '负载 ' + fmtLoad(entry.load) : '')
+      }))
+
+      var mem = entry.memory || {}
+      var memNote = (mem.used !== null && mem.used !== undefined && mem.total)
+        ? fmtBytes(mem.used) + ' / ' + fmtBytes(mem.total)
+        : ''
+      if (entry.swap && entry.swap.percent !== null && entry.swap.percent > 5) {
+        memNote += ' · Swap ' + fmtPct(entry.swap.percent)
+      }
+      metrics.appendChild(metric('内存', mem.percent, { text: memNote || '—' }))
+
+      var disk = entry.disk || {}
+      var diskNote = ''
+      var diskTone = ''
+      if (disk.mounts && disk.mounts.length > 1) {
+        diskNote = '峰值 ' + (disk.mount || '—')
+        if (disk.root && disk.root.mount && disk.root.mount !== disk.mount) {
+          diskNote += ' · 根分区 ' + fmtPct(disk.root.percent)
+        }
+        if (Number(disk.percent) >= 92) diskTone = 'bad'
+        else if (Number(disk.percent) >= 85) diskTone = 'warn'
+      } else {
+        diskNote = disk.mount ? '挂载 ' + disk.mount : '—'
+      }
+      metrics.appendChild(metric('磁盘', disk.percent, { text: diskNote }, diskTone))
+      node.appendChild(metrics)
+    }
+
+    var foot = el('div', 'card-foot')
+    if (connecting) {
+      foot.appendChild(el('span', '', '首次采集进行中'))
+    } else if (entry.kind === 'local') {
+      foot.appendChild(el('span', '', '运行 ' + fmtUptime(entry.uptime)))
+    } else {
+      if (entry.load) foot.appendChild(el('span', '', '负载 ' + fmtLoad(entry.load)))
+      else if (entry.processes && entry.processes.total) foot.appendChild(el('span', '', entry.processes.total + ' 进程'))
+      if (entry.uptime) foot.appendChild(el('span', '', '运行 ' + fmtUptime(entry.uptime)))
+      if (entry.latencyMs !== null && entry.latencyMs !== undefined) foot.appendChild(el('span', '', entry.latencyMs + ' ms'))
+    }
+    var stamp = el('span', '', offline ? '离线' : connecting ? '采集中' : '更新 ' + fmtRelative(entry.sampledAt || state.lastUpdate))
+    stamp.setAttribute('data-stamp', String(entry.sampledAt || 0))
+    foot.appendChild(stamp)
+    var spark = sparkline(entry)
+    if (spark) foot.appendChild(spark)
+    node.appendChild(foot)
+    return node
+  }
+
+  function skeleton() {
+    for (var i = 0; i < 3; i += 1) {
+      var node = el('article', 'card skeleton')
+      node.appendChild(el('div', 'sk-line')).style.width = '55%'
+      node.appendChild(el('div', 'sk-line')).style.width = '35%'
+      for (var j = 0; j < 3; j += 1) node.appendChild(el('div', 'sk-line'))
+      els.grid.appendChild(node)
+    }
+  }
+
+  function matches(entry, query) {
+    if (!query) return true
+    var hay = [entry.name, entry.host, entry.hostname, entry.username, entry.osName].join(' ').toLowerCase()
+    return hay.indexOf(query) >= 0
+  }
+
+  function render() {
+    var data = state.data
+    els.empty.hidden = true
+    els.grid.textContent = ''
+
+    if (!data) {
+      if (state.error) {
+        els.empty.hidden = false
+      } else {
+        skeleton()
+      }
+      return
+    }
+
+    var entries = []
+    if (data.local) entries.push(data.local)
+    entries = entries.concat(data.remotes || [])
+    var visible = entries.filter(function (entry) { return matches(entry, state.filter) })
+
+    if (entries.length === 0) {
+      els.empty.hidden = false
+      return
+    }
+
+    visible.forEach(function (entry) { els.grid.appendChild(card(entry)) })
+
+    var online = entries.filter(function (entry) { return entry.status === 'online' }).length
+    var connecting = entries.filter(function (entry) { return entry.status === 'connecting' }).length
+    var parts = ['<b>' + online + '</b> / ' + entries.length + ' 台在线']
+    if (connecting > 0) parts.push(connecting + ' 台采集中')
+    if (data.sources && (data.sources.saved || data.sources.sshConfig)) {
+      var src = []
+      if (data.sources.saved) src.push('已保存主机 ' + data.sources.saved)
+      if (data.sources.sshConfig) src.push('SSH 配置 ' + data.sources.sshConfig)
+      parts.push(src.join(' · '))
+    }
+    parts.push(state.interval > 0 ? '每 ' + Math.round(state.interval / 1000) + ' 秒刷新' : '手动刷新')
+    parts.push('更新于 ' + fmtRelative(state.lastUpdate))
+    els.summary.innerHTML = parts.join(' · ')
+    els.summary.title = '数据来源：' + (data.sources ? (data.sources.savedFile || '') : '')
+
+    var offlineNames = entries.filter(function (entry) { return entry.status === 'offline' }).map(function (entry) { return entry.name })
+    if (offlineNames.length > 0) {
+      els.foot.textContent = '离线：' + offlineNames.join('、')
+    } else {
+      els.foot.textContent = ''
+    }
+  }
+
+  function showBanner(message) {
+    if (!message) {
+      els.banner.hidden = true
+      els.banner.textContent = ''
+      return
+    }
+    els.banner.hidden = false
+    els.banner.textContent = message
+  }
+
+  function setBusy(busy) {
+    state.busy = busy
+    els.refresh.disabled = busy
+    els.refresh.classList.toggle('spin', busy)
+  }
+
+  function schedule() {
+    window.clearTimeout(state.timer)
+    if (state.interval <= 0 || document.hidden) return
+    state.timer = window.setTimeout(function () { load(false) }, state.interval)
+  }
+
+  function load(force) {
+    if (state.busy) return
+    setBusy(true)
+    var url = 'api/snapshot' + (force ? '?force=1' : '')
+    fetch(url, { cache: 'no-store', headers: { accept: 'application/json' } })
+      .then(function (response) {
+        if (!response.ok) throw new Error('采集服务返回 HTTP ' + response.status)
+        return response.json()
+      })
+      .then(function (data) {
+        if (!data || data.ok !== true) throw new Error((data && data.error) || '采集服务返回了无效数据')
+        state.data = data
+        state.error = null
+        state.lastUpdate = Date.now()
+        showBanner(null)
+        render()
+      })
+      .catch(function (error) {
+        state.error = (error && error.message) || String(error)
+        showBanner('采集失败：' + state.error)
+        if (!state.data) render()
+      })
+      .finally(function () {
+        setBusy(false)
+        schedule()
+      })
+  }
+
+  function tick() {
+    if (!state.lastUpdate) return
+    var summary = els.summary
+    if (summary && summary.innerHTML) {
+      summary.innerHTML = summary.innerHTML.replace(/更新于 [^<·]+$/, '更新于 ' + fmtRelative(state.lastUpdate))
+    }
+    var stamps = document.querySelectorAll('[data-stamp]')
+    for (var i = 0; i < stamps.length; i += 1) {
+      var ts = Number(stamps[i].getAttribute('data-stamp')) || state.lastUpdate
+      if (stamps[i].textContent.indexOf('离线') === 0) continue
+      stamps[i].textContent = '更新 ' + fmtRelative(ts)
+    }
+  }
+
+  els.q.addEventListener('input', function () {
+    state.filter = String(els.q.value || '').trim().toLowerCase()
+    render()
+  })
+
+  els.interval.addEventListener('change', function () {
+    state.interval = Math.max(0, Number(els.interval.value) || 0)
+    try { localStorage.setItem('dsh-server-monitor:interval', String(state.interval)) } catch (e) {}
+    render()
+    schedule()
+  })
+
+  els.refresh.addEventListener('click', function () { load(true) })
+  els.emptyRefresh.addEventListener('click', function () { load(true) })
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) load(false)
+  })
+
+  var stored = null
+  try { stored = localStorage.getItem('dsh-server-monitor:interval') } catch (e) {}
+  if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
+  els.interval.value = String(state.interval)
+  state.ticker = window.setInterval(tick, 1000)
+  render()
+  load(false)
+})()
+</script>
+</body>
+</html>
