@@ -110,7 +110,36 @@
     appearance: none; border: 0; background: transparent; color: var(--text);
     font: inherit; outline: 0; cursor: pointer; padding-right: 2px;
   }
-  select option { color: #18202e; background: #fff; }
+  select option { color: var(--text); background: var(--card); }
+  .cselect-wrap { position: relative; display: inline-flex; align-items: center; }
+  .cselect-native { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+  .cselect-btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 2px;
+    border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 500;
+    cursor: pointer; white-space: nowrap;
+  }
+  .cselect-btn svg { width: 12px; height: 12px; color: var(--muted); transition: transform .15s ease; flex: none; }
+  .cselect-wrap.open .cselect-btn svg { transform: rotate(180deg); color: var(--accent); }
+  .cselect-menu {
+    position: absolute; top: calc(100% + 6px); left: -10px; min-width: 152px; z-index: 90;
+    padding: 4px; border-radius: 11px; border: 1px solid var(--border);
+    background: var(--card); box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .cselect-menu[hidden] { display: none; }
+  .cselect-opt {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%; border: 0; background: transparent; color: var(--text-2);
+    font: inherit; font-size: 12px; text-align: left; padding: 7px 10px; border-radius: 7px;
+    cursor: pointer; white-space: nowrap; transition: background .12s ease, color .12s ease;
+  }
+  .cselect-opt:hover { background: var(--card-soft); color: var(--text); }
+  .cselect-opt.active {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent); font-weight: 600;
+  }
+  .cselect-opt .chk { font-size: 11px; opacity: 0; }
+  .cselect-opt.active .chk { opacity: 1; }
   button.btn {
     height: 32px; display: inline-flex; align-items: center; gap: 6px;
     padding: 0 12px; border-radius: 9px; border: 1px solid var(--border);
@@ -534,6 +563,10 @@
           </select>
         </label>
         <button class="btn" id="view-toggle" type="button" title="切换卡片 / 列表视图">列表视图</button>
+        <label class="field" id="ws-bind-wrap" hidden title="当前工作区绑定的服务器">
+          <select id="ws-bind" aria-label="工作区服务器"></select>
+        </label>
+        <button class="btn" id="ws-show-all" type="button" hidden title="切换只看工作区服务器或查看全部服务器">查看全部</button>
         <label class="field" title="自动刷新间隔">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 1.8"></path></svg>
           <select id="interval" aria-label="刷新间隔">
@@ -682,7 +715,10 @@
   var params = new URLSearchParams(location.search)
   var theme = params.get('theme')
   if (theme === 'dark' || theme === 'light') document.documentElement.setAttribute('data-theme', theme)
+  var isWorkspaceScope = params.get('scope') === 'workspace'
   var initialHostFilter = String(params.get('host') || '').trim()
+  var wsKey = String(params.get('ws') || 'default').trim() || 'default'
+  var wsStorageKey = 'dsh-resource-monitor:ws:' + wsKey
 
   var state = {
     data: null,
@@ -691,12 +727,14 @@
     lastUpdate: 0,
     history: Object.create(null),
     expandedAcc: Object.create(null),
-    filter: initialHostFilter.toLowerCase(),
+    filter: '',
     kindFilter: 'all',
     tagFilter: '',
     sortBy: 'default',
     viewMode: 'grid',
     editingTargetId: null,
+    wsShowAll: false,
+    wsBoundHost: initialHostFilter,
     interval: 10000,
     timer: null,
     ticker: null,
@@ -724,6 +762,9 @@
     tagFilter: document.getElementById('tag-filter'),
     sortBy: document.getElementById('sort-by'),
     viewToggle: document.getElementById('view-toggle'),
+    wsBindWrap: document.getElementById('ws-bind-wrap'),
+    wsBind: document.getElementById('ws-bind'),
+    wsShowAll: document.getElementById('ws-show-all'),
     interval: document.getElementById('interval'),
     customIntervalWrap: document.getElementById('custom-interval-wrap'),
     customIntervalSec: document.getElementById('custom-interval-sec'),
@@ -1237,6 +1278,7 @@
     })
     els.tagFilter.value = seen[prev] ? prev : ''
     if (!seen[prev]) state.tagFilter = ''
+    if (els.tagFilter._syncCustom) els.tagFilter._syncCustom()
   }
 
   function renderClusterBar(entries) {
@@ -1363,6 +1405,46 @@
     els.listWrap.appendChild(table)
   }
 
+  function resolveWorkspaceEntry(entries, target) {
+    if (!target) return null
+    var q = String(target).trim().toLowerCase()
+    if (!q) return null
+    if (q === 'local') {
+      return entries.find(function (e) { return e.kind === 'local' }) || null
+    }
+    var exact = entries.find(function (e) {
+      return String(e.id || '').toLowerCase() === q
+        || String(e.host || '').toLowerCase() === q
+        || String(e.hostname || '').toLowerCase() === q
+    })
+    if (exact) return exact
+    return entries.find(function (e) {
+      return String(e.name || '').toLowerCase() === q
+        || String(e.host || '').toLowerCase().indexOf(q) >= 0
+        || String(e.hostname || '').toLowerCase().indexOf(q) >= 0
+    }) || null
+  }
+
+  function syncWorkspaceSelector(entries) {
+    if (!isWorkspaceScope) {
+      els.wsBindWrap.hidden = true
+      els.wsShowAll.hidden = true
+      return
+    }
+    els.wsBindWrap.hidden = false
+    els.wsShowAll.hidden = false
+    els.wsShowAll.textContent = state.wsShowAll ? '仅看工作区' : '查看全部'
+    els.wsBind.textContent = ''
+    els.wsBind.appendChild(new Option('选择工作区服务器…', ''))
+    entries.forEach(function (e) {
+      var lbl = (e.name || e.host) + (e.kind === 'local' ? ' (本机)' : ' (' + e.host + ')')
+      els.wsBind.appendChild(new Option(lbl, e.id))
+    })
+    var matched = resolveWorkspaceEntry(entries, state.wsBoundHost)
+    els.wsBind.value = matched ? matched.id : ''
+    if (els.wsBind._syncCustom) els.wsBind._syncCustom()
+  }
+
   function render() {
     var data = state.data
     els.empty.hidden = true
@@ -1383,9 +1465,24 @@
     var entries = []
     if (data.local) entries.push(data.local)
     entries = entries.concat(data.remotes || [])
+    syncWorkspaceSelector(entries)
     syncTagOptions(entries)
-    renderClusterBar(entries)
-    var visible = sortEntries(entries.filter(function (entry) { return matches(entry, state.filter) }))
+
+    var visible
+    if (isWorkspaceScope && !state.wsShowAll) {
+      var targetEntry = resolveWorkspaceEntry(entries, state.wsBoundHost)
+      if (!targetEntry && entries.length === 1) targetEntry = entries[0]
+      if (targetEntry) {
+        visible = [targetEntry]
+        els.clusterBar.hidden = true
+      } else {
+        visible = sortEntries(entries.filter(function (entry) { return matches(entry, state.filter) }))
+        renderClusterBar(entries)
+      }
+    } else {
+      renderClusterBar(entries)
+      visible = sortEntries(entries.filter(function (entry) { return matches(entry, state.filter) }))
+    }
 
     if (entries.length === 0) {
       els.listWrap.hidden = true
@@ -2267,6 +2364,7 @@
       els.customIntervalWrap.hidden = false
       els.customIntervalSec.value = String(Math.max(1, Math.round(state.interval / 1000)))
     }
+    if (els.interval._syncCustom) els.interval._syncCustom()
   }
 
   function applyCustomInterval() {
@@ -2314,6 +2412,7 @@
   })
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
+      closeAllSelects()
       if (!els.drawerBackdrop.hidden) closeDrawer()
       else if (!els.aliasModal.hidden) closeAliasModal()
       else if (!els.modal.hidden) closeTargets()
@@ -2351,8 +2450,98 @@
       els.viewToggle.textContent = savedView === 'list' ? '卡片视图' : '列表视图'
     }
   } catch (e) {}
+  function enhanceSelect(selectEl) {
+    if (!selectEl || selectEl._enhanced) return
+    selectEl._enhanced = true
+    var wrap = el('span', 'cselect-wrap')
+    var btn = el('button', 'cselect-btn')
+    btn.type = 'button'
+    var labelSpan = el('span', '', '')
+    btn.appendChild(labelSpan)
+    btn.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>')
+    var menu = el('div', 'cselect-menu')
+    menu.hidden = true
+
+    selectEl.parentNode.insertBefore(wrap, selectEl)
+    selectEl.classList.add('cselect-native')
+    selectEl.tabIndex = -1
+    wrap.appendChild(selectEl)
+    wrap.appendChild(btn)
+    wrap.appendChild(menu)
+
+    function sync() {
+      var opts = Array.prototype.slice.call(selectEl.options || [])
+      var cur = opts.find(function (o) { return o.value === selectEl.value }) || opts[0]
+      labelSpan.textContent = cur ? cur.textContent : ''
+      menu.textContent = ''
+      opts.forEach(function (opt) {
+        var item = el('button', 'cselect-opt' + (opt.value === selectEl.value ? ' active' : ''))
+        item.type = 'button'
+        item.appendChild(el('span', '', opt.textContent))
+        item.appendChild(el('span', 'chk', '✓'))
+        item.addEventListener('click', function (e) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (selectEl.value !== opt.value) {
+            selectEl.value = opt.value
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }))
+          } else if (opt.value === 'custom') {
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }))
+          }
+          closeAllSelects()
+        })
+        menu.appendChild(item)
+      })
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault()
+      e.stopPropagation()
+      var willOpen = menu.hidden
+      closeAllSelects()
+      if (willOpen) {
+        sync()
+        menu.hidden = false
+        wrap.classList.add('open')
+      }
+    })
+
+    selectEl._syncCustom = sync
+    sync()
+  }
+
+  function closeAllSelects() {
+    document.querySelectorAll('.cselect-wrap.open').forEach(function (w) {
+      w.classList.remove('open')
+      var m = w.querySelector('.cselect-menu')
+      if (m) m.hidden = true
+    })
+  }
+
+  els.wsBind.addEventListener('change', function () {
+    state.wsBoundHost = els.wsBind.value || ''
+    state.wsShowAll = false
+    try {
+      if (state.wsBoundHost) localStorage.setItem(wsStorageKey, state.wsBoundHost)
+      else localStorage.removeItem(wsStorageKey)
+    } catch (e) {}
+    render()
+  })
+  els.wsShowAll.addEventListener('click', function () {
+    state.wsShowAll = !state.wsShowAll
+    render()
+  })
+
+  document.addEventListener('click', closeAllSelects)
+  ;[els.kindFilter, els.tagFilter, els.sortBy, els.interval, els.wsBind].forEach(enhanceSelect)
+
+  if (isWorkspaceScope && !state.wsBoundHost) {
+    try {
+      var savedWsHost = localStorage.getItem(wsStorageKey)
+      if (savedWsHost) state.wsBoundHost = savedWsHost
+    } catch (e) {}
+  }
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
-  if (initialHostFilter) els.q.value = initialHostFilter
   syncIntervalControls()
   state.ticker = window.setInterval(tick, 1000)
   render()
