@@ -1,16 +1,16 @@
 {
-  "name": "dsh-server-monitor",
-  "version": "0.1.4",
-  "description": "Server resource dashboard for DeepSeek Harness: live CPU / memory / disk usage for the local host and every saved SSH server, in a conversation tab and the right sidebar.",
+  "name": "dsh-resource-monitor",
+  "version": "0.2.0",
+  "description": "Server resource dashboard for DeepSeek Harness: live CPU / memory / disk usage for the local host and SSH servers you add in the panel, with password or private-key auth.",
   "icon": "icon.svg",
   "author": "xua123",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xua123/dsh-server-monitor.git"
+    "url": "git+https://github.com/xua123/dsh-resource-monitor.git"
   },
-  "homepage": "https://github.com/xua123/dsh-server-monitor#readme",
+  "homepage": "https://github.com/xua123/dsh-resource-monitor#readme",
   "bugs": {
-    "url": "https://github.com/xua123/dsh-server-monitor/issues"
+    "url": "https://github.com/xua123/dsh-resource-monitor/issues"
   },
   "type": "module",
   "main": "lib/index.js",

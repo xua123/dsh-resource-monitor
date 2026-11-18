@@ -1,8 +1,8 @@
-# dsh-server-monitor bundle patch.
+# dsh-resource-monitor bundle patch.
 #
 # The row loads this package's main entry as the host half. The `dsh.client`
 # declaration in package.json makes the web app load ./client as the browser
-# half (iframe tab + right-sidebar tab).
+# half (left-sidebar entry + global panel).
 - insert:
-    - id: dsh-server-monitor
-      name: dsh-server-monitor
+    - id: dsh-resource-monitor
+      name: dsh-resource-monitor

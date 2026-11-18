@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="dsh-monitor-token" content="__MONITOR_TOKEN__">
 <title>服务器资源监控</title>
 <style>
   :root {
@@ -230,6 +231,63 @@
   footer.foot { padding: 0 18px 18px; color: var(--muted); font-size: 10.5px; }
   footer.foot code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10px; }
 
+  .modal[hidden] { display: none; }
+  .modal {
+    position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+    padding: 20px; background: rgba(5, 8, 14, .62); backdrop-filter: blur(4px);
+  }
+  .modal-panel {
+    width: min(740px, 100%); max-height: 88vh; overflow: auto;
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .45);
+  }
+  .modal-head {
+    position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border); background: var(--card);
+  }
+  .modal-head h2 { margin: 0; font-size: 15px; font-weight: 650; }
+  .icon-btn {
+    width: 30px; height: 30px; display: grid; place-items: center;
+    border: 1px solid var(--border); border-radius: 8px; background: transparent;
+    color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .icon-btn:hover { color: var(--text); background: var(--card-soft); }
+  .modal-body { padding: 16px 18px 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--muted); }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-grid input, .form-grid select, .form-grid textarea {
+    width: 100%; padding: 7px 9px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg-soft); color: var(--text);
+    font: inherit; outline: none;
+  }
+  .form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus {
+    border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .form-grid textarea {
+    min-height: 92px; resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px;
+  }
+  .form-actions { flex-direction: row; align-items: center; gap: 10px; margin-top: 2px; }
+  .form-msg { font-size: 11px; color: var(--muted); }
+  .form-msg.error { color: var(--danger); }
+  .form-msg.ok { color: var(--ok); }
+  .target-list { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .target-list h3 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+  .target-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 7px 9px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--card-soft); font-size: 11px;
+  }
+  .target-row .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .target-row .who b { color: var(--text); font-weight: 600; }
+  .target-row .danger {
+    flex: none; border: 0; background: transparent; color: var(--danger);
+    font: inherit; cursor: pointer; padding: 3px 5px; border-radius: 5px;
+  }
+  .target-row .danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+  .target-empty { padding: 10px 2px; font-size: 11px; color: var(--muted); }
+
   @media (max-width: 640px) {
     .top-inner { padding: 12px 14px 10px; }
     main { padding: 12px 14px 22px; }
@@ -276,6 +334,10 @@
             <option value="0">手动</option>
           </select>
         </label>
+        <button class="btn" id="add-target" type="button" title="添加一台 SSH 服务器">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          添加服务器
+        </button>
         <button class="btn primary" id="refresh" type="button" title="立即刷新">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 6.1"></path><path d="M20 4v7h-7"></path></svg>
           刷新
@@ -297,6 +359,45 @@
   </main>
 
   <footer class="foot" id="foot"></footer>
+
+  <div class="modal" id="target-modal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="target-title">
+      <div class="modal-head">
+        <h2 id="target-title">添加服务器</h2>
+        <button class="icon-btn" id="target-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="target-form" class="form-grid" autocomplete="off">
+          <label>名称（可选）<input name="name" maxlength="80" placeholder="web-01"></label>
+          <label>地址<input name="host" required maxlength="255" placeholder="192.0.2.10"></label>
+          <label>端口<input name="port" type="number" min="1" max="65535" value="22" required></label>
+          <label>用户名<input name="username" required maxlength="128" placeholder="deploy"></label>
+          <label class="full">认证方式
+            <select name="auth">
+              <option value="password">密码</option>
+              <option value="key">私钥</option>
+            </select>
+          </label>
+          <div class="full" id="auth-password">
+            <label>密码<input name="password" type="password" autocomplete="new-password" placeholder="SSH 登录密码"></label>
+          </div>
+          <div class="full" id="auth-key" hidden>
+            <label>私钥内容<textarea name="privateKey" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea></label>
+            <label>或选择私钥文件<input name="keyFile" type="file"></label>
+            <label>私钥口令（可选）<input name="passphrase" type="password" placeholder="没有口令可留空"></label>
+          </div>
+          <div class="full form-actions">
+            <button type="submit" class="btn primary">保存并开始采集</button>
+            <span class="form-msg" id="target-msg"></span>
+          </div>
+        </form>
+        <div class="target-list">
+          <h3>已添加的服务器</h3>
+          <div id="target-rows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -328,8 +429,20 @@
     q: document.getElementById('q'),
     interval: document.getElementById('interval'),
     refresh: document.getElementById('refresh'),
-    emptyRefresh: document.getElementById('empty-refresh')
+    emptyRefresh: document.getElementById('empty-refresh'),
+    addTarget: document.getElementById('add-target'),
+    modal: document.getElementById('target-modal'),
+    targetClose: document.getElementById('target-close'),
+    targetForm: document.getElementById('target-form'),
+    targetRows: document.getElementById('target-rows'),
+    targetMsg: document.getElementById('target-msg'),
+    authSelect: document.querySelector('#target-form select[name="auth"]'),
+    authPassword: document.getElementById('auth-password'),
+    authKey: document.getElementById('auth-key')
   }
+
+  var tokenMeta = document.querySelector('meta[name="dsh-monitor-token"]')
+  var writeToken = tokenMeta ? tokenMeta.getAttribute('content') || '' : ''
 
   var ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 8v5"></path><circle cx="12" cy="16.6" r=".9" fill="currentColor"></circle><circle cx="12" cy="12" r="9"></circle></svg>'
 
@@ -534,19 +647,22 @@
       metrics.appendChild(metric('内存', mem.percent, { text: memNote || '—' }))
 
       var disk = entry.disk || {}
-      var diskNote = ''
+      var capacity = (disk.used !== null && disk.used !== undefined && disk.total)
+        ? fmtBytes(disk.used) + ' / ' + fmtBytes(disk.total)
+        : ''
+      var diskNote = capacity
       var diskTone = ''
       if (disk.mounts && disk.mounts.length > 1) {
-        diskNote = '峰值 ' + (disk.mount || '—')
+        diskNote += (diskNote ? ' · ' : '') + '峰值 ' + (disk.mount || '—')
         if (disk.root && disk.root.mount && disk.root.mount !== disk.mount) {
           diskNote += ' · 根分区 ' + fmtPct(disk.root.percent)
         }
         if (Number(disk.percent) >= 92) diskTone = 'bad'
         else if (Number(disk.percent) >= 85) diskTone = 'warn'
-      } else {
-        diskNote = disk.mount ? '挂载 ' + disk.mount : '—'
+      } else if (disk.mount) {
+        diskNote += (diskNote ? ' · ' : '') + '挂载 ' + disk.mount
       }
-      metrics.appendChild(metric('磁盘', disk.percent, { text: diskNote }, diskTone))
+      metrics.appendChild(metric('磁盘', disk.percent, { text: diskNote || '—' }, diskTone))
       node.appendChild(metrics)
     }
 
@@ -616,11 +732,15 @@
     var connecting = entries.filter(function (entry) { return entry.status === 'connecting' }).length
     var parts = ['<b>' + online + '</b> / ' + entries.length + ' 台在线']
     if (connecting > 0) parts.push(connecting + ' 台采集中')
-    if (data.sources && (data.sources.saved || data.sources.sshConfig)) {
+    if (data.sources && (data.sources.saved || data.sources.sshConfig || data.sources.manual)) {
       var src = []
       if (data.sources.saved) src.push('已保存主机 ' + data.sources.saved)
       if (data.sources.sshConfig) src.push('SSH 配置 ' + data.sources.sshConfig)
+      if (data.sources.manual) src.push('手动添加 ' + data.sources.manual)
       parts.push(src.join(' · '))
+    }
+    if (data.summary && data.summary.hiddenAuth > 0) {
+      parts.push('已隐藏 ' + data.summary.hiddenAuth + ' 台认证失败')
     }
     parts.push(state.interval > 0 ? '每 ' + Math.round(state.interval / 1000) + ' 秒刷新' : '手动刷新')
     parts.push('更新于 ' + fmtRelative(state.lastUpdate))
@@ -628,11 +748,134 @@
     els.summary.title = '数据来源：' + (data.sources ? (data.sources.savedFile || '') : '')
 
     var offlineNames = entries.filter(function (entry) { return entry.status === 'offline' }).map(function (entry) { return entry.name })
-    if (offlineNames.length > 0) {
-      els.foot.textContent = '离线：' + offlineNames.join('、')
-    } else {
-      els.foot.textContent = ''
+    var footParts = []
+    if (offlineNames.length > 0) footParts.push('离线：' + offlineNames.join('、'))
+    if (data.summary && data.summary.hiddenAuth > 0) {
+      footParts.push('已隐藏 ' + data.summary.hiddenAuth + ' 台认证失败（可在“添加服务器”里修改）')
     }
+    els.foot.textContent = footParts.join(' · ')
+  }
+
+  function setTargetMsg(text, tone) {
+    els.targetMsg.textContent = text || ''
+    els.targetMsg.className = 'form-msg' + (tone ? ' ' + tone : '')
+  }
+
+  function syncAuthFields() {
+    var key = els.authSelect.value === 'key'
+    els.authPassword.hidden = key
+    els.authKey.hidden = !key
+  }
+
+  function targetRow(entry) {
+    var row = el('div', 'target-row')
+    var who = el('div', 'who')
+    who.appendChild(el('b', '', entry.name || entry.host))
+    who.appendChild(document.createTextNode(' ' + entry.username + '@' + entry.host + ':' + entry.port))
+    row.appendChild(who)
+    row.appendChild(el('span', 'tag', entry.auth === 'key' ? '私钥' : '密码'))
+    var remove = el('button', 'danger', '删除')
+    remove.type = 'button'
+    remove.addEventListener('click', function () {
+      if (!window.confirm('删除 ' + (entry.name || entry.host) + '？')) return
+      fetch('api/targets/' + encodeURIComponent(entry.id), {
+        method: 'DELETE',
+        headers: { 'x-monitor-token': writeToken },
+      }).then(function (response) {
+        return response.json().then(function (body) { return { response: response, body: body } })
+      }).then(function (result) {
+        if (!result.response.ok || !result.body.ok) throw new Error(result.body.error || '删除失败')
+        setTargetMsg('已删除', 'ok')
+        loadTargetList()
+        load(true)
+      }).catch(function (error) {
+        setTargetMsg((error && error.message) || String(error), 'error')
+      })
+    })
+    row.appendChild(remove)
+    return row
+  }
+
+  function renderTargets(list) {
+    els.targetRows.textContent = ''
+    if (!list || list.length === 0) {
+      els.targetRows.appendChild(el('div', 'target-empty', '还没有手动添加的服务器。'))
+      return
+    }
+    list.forEach(function (entry) { els.targetRows.appendChild(targetRow(entry)) })
+  }
+
+  function loadTargetList() {
+    fetch('api/targets', { cache: 'no-store', headers: { accept: 'application/json' } })
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status)
+        return response.json()
+      })
+      .then(function (body) {
+        if (!body || body.ok !== true) throw new Error((body && body.error) || '加载失败')
+        renderTargets(body.targets || [])
+      })
+      .catch(function (error) {
+        els.targetRows.textContent = '加载失败：' + ((error && error.message) || String(error))
+      })
+  }
+
+  function openTargets() {
+    els.modal.hidden = false
+    document.body.style.overflow = 'hidden'
+    syncAuthFields()
+    setTargetMsg('', '')
+    loadTargetList()
+    var host = els.targetForm.elements.host
+    if (host) window.setTimeout(function () { host.focus() }, 30)
+  }
+
+  function closeTargets() {
+    els.modal.hidden = true
+    document.body.style.overflow = ''
+  }
+
+  function submitTarget(event) {
+    event.preventDefault()
+    if (!writeToken) {
+      setTargetMsg('页面令牌缺失，请刷新页面后重试', 'error')
+      return
+    }
+    var form = els.targetForm
+    var data = new FormData(form)
+    var auth = String(data.get('auth') || 'password')
+    var body = {
+      name: String(data.get('name') || ''),
+      host: String(data.get('host') || ''),
+      port: Number(data.get('port') || 22),
+      username: String(data.get('username') || ''),
+      auth: auth,
+      password: auth === 'password' ? String(data.get('password') || '') : '',
+      privateKey: auth === 'key' ? String(data.get('privateKey') || '') : '',
+      passphrase: auth === 'key' ? String(data.get('passphrase') || '') : '',
+    }
+    var submit = form.querySelector('button[type="submit"]')
+    if (submit) submit.disabled = true
+    setTargetMsg('保存中…', '')
+    fetch('api/targets', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
+      body: JSON.stringify(body),
+    }).then(function (response) {
+      return response.json().then(function (payload) { return { response: response, payload: payload } })
+    }).then(function (result) {
+      if (!result.response.ok || !result.payload.ok) throw new Error(result.payload.error || '保存失败')
+      form.reset()
+      form.elements.port.value = '22'
+      syncAuthFields()
+      setTargetMsg('已添加，正在建立 SSH 连接…', 'ok')
+      loadTargetList()
+      load(true)
+    }).catch(function (error) {
+      setTargetMsg((error && error.message) || String(error), 'error')
+    }).finally(function () {
+      if (submit) submit.disabled = false
+    })
   }
 
   function showBanner(message) {
@@ -706,7 +949,7 @@
 
   els.interval.addEventListener('change', function () {
     state.interval = Math.max(0, Number(els.interval.value) || 0)
-    try { localStorage.setItem('dsh-server-monitor:interval', String(state.interval)) } catch (e) {}
+    try { localStorage.setItem('dsh-resource-monitor:interval', String(state.interval)) } catch (e) {}
     render()
     schedule()
   })
@@ -714,12 +957,41 @@
   els.refresh.addEventListener('click', function () { load(true) })
   els.emptyRefresh.addEventListener('click', function () { load(true) })
 
+  els.addTarget.addEventListener('click', openTargets)
+  els.targetClose.addEventListener('click', closeTargets)
+  els.modal.addEventListener('click', function (event) {
+    if (event.target === els.modal) closeTargets()
+  })
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !els.modal.hidden) closeTargets()
+  })
+  els.authSelect.addEventListener('change', syncAuthFields)
+  els.targetForm.addEventListener('submit', submitTarget)
+  els.targetForm.elements.keyFile.addEventListener('change', function () {
+    var file = this.files && this.files[0]
+    if (!file) return
+    if (file.size > 128 * 1024) {
+      setTargetMsg('私钥文件不能超过 128 KB', 'error')
+      return
+    }
+    var reader = new FileReader()
+    reader.onload = function () {
+      els.targetForm.elements.privateKey.value = String(reader.result || '')
+      setTargetMsg('已读取私钥文件：' + file.name, 'ok')
+    }
+    reader.onerror = function () { setTargetMsg('读取私钥文件失败', 'error') }
+    reader.readAsText(file)
+  })
+
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) load(false)
   })
 
   var stored = null
-  try { stored = localStorage.getItem('dsh-server-monitor:interval') } catch (e) {}
+  try {
+    stored = localStorage.getItem('dsh-resource-monitor:interval')
+      || localStorage.getItem('dsh-server-monitor:interval')
+  } catch (e) {}
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
   els.interval.value = String(state.interval)
   state.ticker = window.setInterval(tick, 1000)
