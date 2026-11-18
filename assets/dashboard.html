@@ -569,6 +569,7 @@
             <option value="cpu">CPU 占用 ↓</option>
             <option value="mem">内存占用 ↓</option>
             <option value="accel">平均利用率 ↓</option>
+            <option value="vram">显存占用率 ↓</option>
           </select>
         </label>
         <button class="btn" id="view-toggle" type="button" title="切换卡片 / 列表视图">列表视图</button>
@@ -1341,12 +1342,24 @@
     return best
   }
 
+  function peakAccelMem(entry) {
+    var list = entry.gpus || []
+    if (!list.length) return -1
+    var best = -1
+    list.forEach(function (g) {
+      var m = Number(g.memoryPercent)
+      if (Number.isFinite(m) && m > best) best = m
+    })
+    return best
+  }
+
   function sortEntries(list) {
     return list.slice().sort(function (a, b) {
       if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1
       if (state.sortBy === 'cpu') return (Number(b.cpu && b.cpu.usage) || -1) - (Number(a.cpu && a.cpu.usage) || -1)
       if (state.sortBy === 'mem') return (Number(b.memory && b.memory.percent) || -1) - (Number(a.memory && a.memory.percent) || -1)
       if (state.sortBy === 'accel') return peakAccelUtil(b) - peakAccelUtil(a)
+      if (state.sortBy === 'vram') return peakAccelMem(b) - peakAccelMem(a)
       return 0
     })
   }
