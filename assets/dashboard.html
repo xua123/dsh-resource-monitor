@@ -742,6 +742,8 @@
   if (theme === 'dark' || theme === 'light') document.documentElement.setAttribute('data-theme', theme)
   var isWorkspaceScope = params.get('scope') === 'workspace'
   var initialHostFilter = String(params.get('host') || '').trim()
+  var workspaceSession = String(params.get('session') || '').trim()
+  var workspacePath = String(params.get('path') || '').trim()
   var wsKey = String(params.get('ws') || 'default').trim() || 'default'
   var wsStorageKey = 'dsh-resource-monitor:ws:' + wsKey
 
@@ -2857,8 +2859,31 @@
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
   syncIntervalControls()
   state.ticker = window.setInterval(tick, 1000)
-  render()
-  load(false)
+  function bootMonitor() {
+    render()
+    load(false)
+  }
+  if (isWorkspaceScope && (workspaceSession || workspacePath)) {
+    var resolveWorkspaceUrl = workspaceSession
+      ? 'api/resolve-workspace?session=' + encodeURIComponent(workspaceSession)
+      : 'api/resolve-workspace?path=' + encodeURIComponent(workspacePath)
+    fetch(resolveWorkspaceUrl, { cache: 'no-store' })
+      .then(function (response) { return response.ok ? response.json() : null })
+      .then(function (body) {
+        var workspace = body && body.workspace
+        if (workspace) {
+          var host = workspace.local ? 'local' : String(workspace.id || workspace.host || '').trim()
+          if (host) {
+            state.wsBoundHost = host
+            try { localStorage.setItem(wsStorageKey, host) } catch (e) {}
+          }
+        }
+      })
+      .catch(function () {})
+      .then(bootMonitor)
+  } else {
+    bootMonitor()
+  }
 })()
 </script>
 </body>
