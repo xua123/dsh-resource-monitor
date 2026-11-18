@@ -11,8 +11,8 @@ import {
   parseNvidiaApps,
 } from '../lib/gpu.js'
 import { parsePsOutput } from '../lib/processes.js'
-import { parseRemoteDetails, parseRemoteSnapshot } from '../lib/collect-remote.js'
-import { loadTargetAliases, setTargetAlias } from '../lib/manual-targets.js'
+import { parseContainerInfo, parseNetDev, parseRemoteDetails, parseRemoteSnapshot } from '../lib/collect-remote.js'
+import { loadHostPrefs, loadTargetAliases, setHostPrefs, setTargetAlias } from '../lib/manual-targets.js'
 
 test('parseGpuCsv parses full NVIDIA output and maps compute capability', () => {
   const stdout = [
@@ -100,6 +100,17 @@ test('parseDcuSmi and parseDcuPids handle Hygon DCU JSON and pid table', () => {
   assert.equal(pids[0].pid, 9876)
   assert.equal(pids[0].deviceIndex, 0)
   assert.equal(pids[0].memoryPercent, 12.5)
+
+  const tableOut = [
+    '0   44.0c   160.0W   12%   78%',
+    'DCU[0] : Card series: Hygon Z100L',
+  ].join('\n')
+  const tableCards = parseDcuSmi(tableOut, 'dcu')
+  assert.equal(tableCards.length, 1)
+  assert.equal(tableCards[0].type, 'dcu')
+  assert.equal(tableCards[0].name, 'Hygon Z100L')
+  assert.equal(tableCards[0].utilization, 78)
+  assert.equal(tableCards[0].memoryPercent, 12)
 })
 
 test('parsePsOutput parses top processes including commands with spaces', () => {
@@ -147,7 +158,7 @@ test('parseRemoteSnapshot and parseRemoteDetails integrate CPU, memory, and acce
   assert.equal(details.acceleratorProcesses[0].memoryPercent, 50)
 })
 
-test('setTargetAlias and loadTargetAliases persist and clear custom server names', () => {
+test('setTargetAlias, loadTargetAliases, setHostPrefs and loadHostPrefs persist properly', () => {
   const prevHome = process.env.DSH_HOME
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-mon-test-'))
   process.env.DSH_HOME = tmpDir
@@ -156,9 +167,36 @@ test('setTargetAlias and loadTargetAliases persist and clear custom server names
     assert.deepEqual({ ...loadTargetAliases() }, { 'node-1': 'A100 训练节点' })
     setTargetAlias('node-1', '   ')
     assert.deepEqual({ ...loadTargetAliases() }, {})
+
+    setHostPrefs('node-1', { pinned: true, tags: ['训练', 'A100', '训练'] })
+    assert.deepEqual({ ...loadHostPrefs() }, { 'node-1': { pinned: true, tags: ['训练', 'A100'] } })
+    setHostPrefs('node-1', { pinned: false, tags: [] })
+    assert.deepEqual({ ...loadHostPrefs() }, {})
   } finally {
     if (prevHome === undefined) delete process.env.DSH_HOME
     else process.env.DSH_HOME = prevHome
     fs.rmSync(tmpDir, { recursive: true, force: true })
   }
+})
+
+test('parseNetDev sums physical interfaces and ignores lo/docker/veth', () => {
+  const netOut = [
+    'Inter-|   Receive                                                |  Transmit',
+    ' face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets',
+    '    lo: 1000000 100 0 0 0 0 0 0 1000000 100 0 0 0 0 0 0',
+    'docker0: 500000 50 0 0 0 0 0 0 500000 50 0 0 0 0 0 0',
+    '  eth0: 2048000 200 0 0 0 0 0 0 1024000 100 0 0 0 0 0 0',
+  ].join('\n')
+  const net = parseNetDev(netOut)
+  assert.equal(net.rxBytes, 2048000)
+  assert.equal(net.txBytes, 1024000)
+})
+
+test('parseContainerInfo parses cgroup v2 CPU and memory limits', () => {
+  const cOut = ['yes', '400000 100000', String(16 * 1024 ** 3)].join('\n')
+  const info = parseContainerInfo(cOut)
+  assert.equal(info.isContainer, true)
+  assert.equal(info.cpuLimit, 4)
+  assert.equal(info.memLimitBytes, 16 * 1024 ** 3)
+  assert.equal(parseContainerInfo('no\n'), null)
 })
