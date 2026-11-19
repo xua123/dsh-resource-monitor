@@ -513,6 +513,17 @@
   .docker-sub { margin-top: 4px; font-size: 10.5px; color: var(--muted); word-break: break-all; line-height: 1.5; }
   .docker-meta { margin-top: 7px; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 10.5px; color: var(--text-2); }
   .docker-card .docker-actions { margin-top: 8px; }
+  .docker-arrow {
+    flex: none; width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--card-soft); color: var(--text-2); cursor: pointer; font-size: 12px;
+    line-height: 1; transition: transform .15s ease, background .15s ease;
+  }
+  .docker-arrow:hover { background: var(--bg-soft); }
+  .docker-arrow.open { transform: rotate(180deg); }
+  .docker-detail { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--border); display: grid; gap: 5px; }
+  .docker-detail-row { display: flex; gap: 9px; font-size: 10.5px; line-height: 1.5; }
+  .docker-detail-row .k { flex: none; width: 64px; color: var(--muted); }
+  .docker-detail-row .v { color: var(--text-2); word-break: break-all; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
   .cmd-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mini-meter { display: flex; align-items: center; gap: 7px; min-width: 92px; }
@@ -819,6 +830,7 @@
     drawerHostId: null,
     killTarget: null,
     dockerTarget: null,
+    dockerInspectCache: Object.create(null),
     drawerTab: 'top',
     drawerData: null,
     drawerError: null,
@@ -2024,6 +2036,87 @@
     items.forEach(function (item) { els.drawerBody.appendChild(renderItem(item)) })
   }
 
+  function dockerInspectRow(label, value) {
+    var row = el('div', 'docker-detail-row')
+    row.appendChild(el('span', 'k', label))
+    row.appendChild(el('span', 'v', value == null || value === '' ? '—' : String(value)))
+    return row
+  }
+
+  function dockerTime(value) {
+    if (!value || String(value).startsWith('0001-')) return '—'
+    var date = new Date(value)
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN')
+  }
+
+  function renderDockerInspect(detail, data) {
+    detail.textContent = ''
+    var networks = (data.networks || []).map(function (network) {
+      return network.name + (network.ip ? ' · ' + network.ip : '')
+    }).join('，')
+    var mounts = (data.mounts || []).map(function (mount) {
+      return mount.source + ' → ' + mount.destination + (mount.readOnly ? '（只读）' : '')
+    }).join('\n')
+    detail.appendChild(dockerInspectRow('容器 ID', data.id))
+    detail.appendChild(dockerInspectRow('镜像', data.image))
+    detail.appendChild(dockerInspectRow('启动命令', data.command))
+    detail.appendChild(dockerInspectRow('状态', data.status + (data.exitCode !== null ? '（退出码 ' + data.exitCode + '）' : '')))
+    detail.appendChild(dockerInspectRow('创建时间', dockerTime(data.created)))
+    if (data.startedAt) detail.appendChild(dockerInspectRow('启动时间', dockerTime(data.startedAt)))
+    if (data.finishedAt) detail.appendChild(dockerInspectRow('结束时间', dockerTime(data.finishedAt)))
+    detail.appendChild(dockerInspectRow('重启策略', data.restartPolicy || 'no'))
+    detail.appendChild(dockerInspectRow('网络模式', data.networkMode))
+    detail.appendChild(dockerInspectRow('网络', networks))
+    detail.appendChild(dockerInspectRow('端口', (data.ports || []).join('，')))
+    detail.appendChild(dockerInspectRow('挂载', mounts))
+  }
+
+  function attachDockerDetail(card, container) {
+    var detail = el('div', 'docker-detail')
+    detail.hidden = true
+    var arrow = el('button', 'docker-arrow', '▾')
+    arrow.type = 'button'
+    arrow.title = '展开容器详情'
+    arrow.setAttribute('aria-label', '展开容器详情')
+    arrow.addEventListener('click', function (event) {
+      event.stopPropagation()
+      var opening = detail.hidden
+      detail.hidden = !opening
+      arrow.classList.toggle('open', opening)
+      arrow.title = opening ? '收起容器详情' : '展开容器详情'
+      if (!opening) return
+      var hostId = state.drawerHostId
+      var key = String(hostId) + '|' + container.id
+      var cached = state.dockerInspectCache[key]
+      if (cached) {
+        renderDockerInspect(detail, cached)
+        return
+      }
+      detail.textContent = '正在加载容器详情…'
+      fetch('api/hosts/' + encodeURIComponent(hostId) + '/docker/inspect?target=' + encodeURIComponent(container.id), {
+        cache: 'no-store',
+        headers: { accept: 'application/json' },
+      })
+        .then(function (response) {
+          return response.json().catch(function () { return {} }).then(function (body) {
+            return { ok: response.ok, body: body }
+          })
+        })
+        .then(function (result) {
+          if (!result.ok || !result.body || result.body.ok !== true) {
+            throw new Error((result.body && result.body.error) || '加载容器详情失败')
+          }
+          state.dockerInspectCache[key] = result.body.container
+          renderDockerInspect(detail, result.body.container)
+        })
+        .catch(function (error) {
+          detail.textContent = '加载失败：' + ((error && error.message) || String(error))
+        })
+    })
+    card.appendChild(detail)
+    return arrow
+  }
+
   function renderDockerProcesses(data) {
     var docker = (data && data.docker) || { available: false, images: [], running: [], stopped: [] }
     if (!docker.available) {
@@ -2052,6 +2145,7 @@
       actions.appendChild(dockerButton('重启', 'container', 'restart', container, 'info'))
       head.appendChild(actions)
       card.appendChild(head)
+      head.appendChild(attachDockerDetail(card, container))
       card.appendChild(el('div', 'docker-sub', container.image))
       card.appendChild(dockerMeta([container.status, dockerPortText(container), container.networks ? '网络 ' + container.networks : '']))
       return card
@@ -2063,6 +2157,7 @@
       head.appendChild(el('div', 'docker-name', container.name || container.shortId))
       head.appendChild(dockerButton('启动', 'container', 'start', container, 'ok'))
       card.appendChild(head)
+      head.appendChild(attachDockerDetail(card, container))
       card.appendChild(el('div', 'docker-sub', container.image))
       card.appendChild(dockerMeta([container.status, dockerPortText(container), container.networks ? '网络 ' + container.networks : '']))
       return card
@@ -2858,6 +2953,7 @@
           throw new Error((result.body && result.body.error) || 'Docker 操作失败')
         }
         closeDockerModal()
+        state.dockerInspectCache = Object.create(null)
         showBanner('已' + (target.action === 'rmi' ? '删除镜像' : target.action === 'stop' ? '停止容器' : target.action === 'restart' ? '重启容器' : '启动容器') + '「' + target.name + '」')
         loadDrawerDetails(true)
       })

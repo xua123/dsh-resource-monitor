@@ -11,7 +11,7 @@ import {
   parseNvidiaApps,
 } from '../lib/gpu.js'
 import { friendlyProcName, parseProcInfo } from '../lib/collect-remote.js'
-import { parseDockerSection } from '../lib/docker.js'
+import { parseDockerSection, summarizeDockerInspect } from '../lib/docker.js'
 import { parsePsOutput } from '../lib/processes.js'
 import { parseContainerInfo, parseNetDev, parseRemoteDetails, parseRemoteSnapshot } from '../lib/collect-remote.js'
 import { loadHostPrefs, loadTargetAliases, setHostPrefs, setTargetAlias } from '../lib/manual-targets.js'
@@ -232,4 +232,20 @@ test('parseDockerSection keeps empty trailing fields', () => {
   assert.equal(docker.running.length, 1)
   assert.equal(docker.running[0].name, 'web')
   assert.equal(docker.stopped.length, 1)
+})
+
+test('summarizeDockerInspect extracts ports, networks and mounts', () => {
+  const summary = summarizeDockerInspect(JSON.stringify([{
+    Id: 'abcdef1234567890', Name: '/web', Path: 'nginx', Args: ['-g', 'daemon off;'],
+    Created: '2026-11-18T10:00:00Z',
+    State: { Status: 'running', Running: true, ExitCode: 0, StartedAt: '2026-11-18T10:00:01Z' },
+    Config: { Image: 'nginx:latest' },
+    HostConfig: { RestartPolicy: { Name: 'always' }, NetworkMode: 'bridge' },
+    NetworkSettings: { Networks: { bridge: { IPAddress: '172.17.0.2' } }, Ports: { '80/tcp': [{ HostIp: '0.0.0.0', HostPort: '8080' }] } },
+    Mounts: [{ Type: 'bind', Source: '/data', Destination: '/usr/share/nginx/html', RW: true }],
+  }]))
+  assert.equal(summary.name, 'web')
+  assert.equal(summary.networkMode, 'bridge')
+  assert.deepEqual(summary.ports, ['8080->80/tcp'])
+  assert.equal(summary.mounts[0].source, '/data')
 })
