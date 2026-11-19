@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="dsh-monitor-token" content="__MONITOR_TOKEN__">
-<title>服务器资源监控</title>
+<title>资源监控</title>
 <style>
   [hidden] { display: none !important; }
   :root {
@@ -336,6 +336,18 @@
   .target-row .restore:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
   .card-actions { display: flex; align-items: center; gap: 2px; flex: none; margin: -3px -4px 0 0; }
+  .card-monitor {
+    flex: none; width: 24px; height: 24px; padding: 0; border-radius: 6px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--border));
+    background: transparent; color: var(--warn);
+  }
+  .card-monitor svg { width: 13px; height: 13px; display: block; }
+  .card-monitor:hover { background: color-mix(in srgb, var(--warn) 12%, transparent); }
+  .card-monitor.paused { color: #22c55e; border-color: color-mix(in srgb, #22c55e 45%, var(--border)); }
+  .card-monitor.paused:hover { background: color-mix(in srgb, #22c55e 12%, transparent); }
+  .card.paused { opacity: .7; border-style: dashed; }
+  .card.paused .dot { background: var(--muted); box-shadow: none; }
   .card-remove, .card-edit, .card-pin {
     flex: none; width: 26px; height: 26px; display: grid; place-items: center;
     border: 1px solid transparent; border-radius: 7px;
@@ -511,11 +523,27 @@
   .docker-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .docker-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 650; color: var(--text); word-break: break-all; }
   .docker-head-actions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
+  .docker-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .docker-left input[type="checkbox"] { flex: none; accent-color: var(--accent); }
+  .docker-batch-bar { display: flex; align-items: center; gap: 8px; margin: 6px 0 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-soft); font-size: 11px; color: var(--text-2); }
+  .docker-tree-toggle { margin-top: 7px; padding: 0; border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 10.5px; cursor: pointer; }
+  .docker-tree { margin-top: 4px; display: grid; gap: 2px; }
+  .docker-tree-item { text-align: left; border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 10.5px; padding: 2px 4px; border-radius: 5px; cursor: pointer; }
+  .docker-tree-item:hover { background: var(--bg-soft); color: var(--accent); }
+  .docker-flash { animation: docker-flash 1.4s ease; }
+  @keyframes docker-flash { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 2px var(--accent); } }
+  .docker-card.docker-focus { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
   .docker-head-actions .btn { display: inline-flex; align-items: center; justify-content: center; }
   .docker-actions { display: inline-flex; align-items: center; gap: 6px; }
   button.btn.docker-action-btn { padding: 1px 8px; height: 22px; font-size: 10.5px; line-height: 18px; border-radius: 6px; }
   .docker-sub { margin-top: 4px; font-size: 10.5px; color: var(--muted); word-break: break-all; line-height: 1.5; }
   .docker-meta { margin-top: 7px; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 10.5px; color: var(--text-2); }
+  .proc-action-btn { padding: 1px 8px; height: 22px; font-size: 11px; line-height: 18px; border-radius: 6px; }
+  .btn.proc-action-btn { background: transparent; border: 1px solid var(--border); color: var(--text-2); }
+  .btn.proc-action-btn.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); background: transparent; }
+  .btn.proc-action-btn.info { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: transparent; }
+  .btn.proc-action-btn:hover { background: var(--bg-soft); }
+  .docker-container-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-2); }
   .docker-detail-btn { min-width: 42px; }
   .docker-detail { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--border); display: grid; gap: 5px; }
   .docker-detail-row { display: flex; gap: 9px; font-size: 10.5px; line-height: 1.5; }
@@ -529,6 +557,7 @@
   }
   .docker-section { margin-top: 12px; }
   .docker-section-toggle {
+    position: sticky; top: 0; z-index: 6; background: var(--bg);
     width: 100%; display: flex; align-items: center; gap: 7px; padding: 8px 9px;
     border: 1px solid var(--border); border-radius: 8px; background: var(--card-soft);
     color: var(--text-2); font: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer; text-align: left;
@@ -576,7 +605,7 @@
           </svg>
         </div>
         <div style="min-width:0">
-          <h1>服务器资源监控</h1>
+          <h1>资源监控</h1>
           <p class="sub" id="summary" aria-live="polite">正在连接采集服务…</p>
         </div>
       </div>
@@ -770,7 +799,8 @@
         <p id="kill-error" style="margin:0 0 10px;color:var(--bad);font-size:12px;line-height:1.5" hidden></p>
         <div class="actions">
           <button class="btn" id="kill-cancel" type="button">取消</button>
-          <button class="btn primary" id="kill-confirm" type="button">终止进程</button>
+          <button class="btn danger" id="kill-force" type="button" hidden>强制杀死</button>
+          <button class="btn primary" id="kill-confirm" type="button">中止进程</button>
         </div>
       </div>
     </div>
@@ -845,6 +875,9 @@
     dockerInspectCache: Object.create(null),
     dockerSections: { images: false, running: false, stopped: false },
     dockerExpanded: Object.create(null),
+    dockerSelected: { images: new Set(), containers: new Set() },
+    dockerFocusId: null,
+    dockerBatch: null,
     drawerTab: 'top',
     drawerData: null,
     drawerError: null,
@@ -900,6 +933,7 @@
     killText: document.getElementById('kill-text'),
     killError: document.getElementById('kill-error'),
     killConfirm: document.getElementById('kill-confirm'),
+    killForce: document.getElementById('kill-force'),
     killCancel: document.getElementById('kill-cancel'),
     killClose: document.getElementById('kill-close'),
     dockerModal: document.getElementById('docker-modal'),
@@ -1198,10 +1232,11 @@
   function card(entry) {
     var offline = entry.status === 'offline'
     var connecting = entry.status === 'connecting'
+    var paused = entry.status === 'paused'
     var hotAcc = !offline && !connecting && (entry.gpus || []).some(isHotCard)
     var critical = !offline && !connecting && (hotAcc || Number(entry.disk && entry.disk.percent) >= 92 || Number(entry.memory && entry.memory.percent) >= 92)
-    var node = el('article', 'card' + (offline ? ' offline' : '') + (connecting ? ' connecting' : '') + (entry.kind === 'local' ? ' local' : '') + (critical ? ' critical' : '') + (!offline && !connecting ? ' clickable' : ''))
-    if (!offline && !connecting) {
+    var node = el('article', 'card' + (offline ? ' offline' : '') + (connecting ? ' connecting' : '') + (entry.kind === 'local' ? ' local' : '') + (critical ? ' critical' : '') + (paused ? ' paused' : '') + (!offline && !connecting && !paused ? ' clickable' : ''))
+    if (!offline && !connecting && !paused) {
       node.title = '点击查看占用详情'
       node.addEventListener('click', function () {
         openDrawer(entry)
@@ -1250,16 +1285,7 @@
 
     head.appendChild(body)
     var actionsWrap = el('div', 'card-actions')
-    var pinBtn = el('button', 'card-pin' + (entry.pinned ? ' active' : ''))
-    pinBtn.type = 'button'
-    pinBtn.title = entry.pinned ? '取消置顶' : '置顶此服务器'
-    pinBtn.setAttribute('aria-label', '置顶服务器')
-    pinBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="' + (entry.pinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
-    pinBtn.addEventListener('click', function (event) {
-      event.stopPropagation()
-      togglePin(entry)
-    })
-    actionsWrap.appendChild(pinBtn)
+    actionsWrap.appendChild(monitorButton(entry))
     var editBtn = el('button', 'card-edit')
     editBtn.type = 'button'
     editBtn.title = '自定义服务器名称（IP 地址不可调整）'
@@ -1286,7 +1312,7 @@
     node.appendChild(head)
 
     if (connecting) {
-      var waiting = el('div', 'collecting', '正在加载服务器资源…')
+      var waiting = el('div', 'collecting', '正在加载资源监控…')
       waiting.title = '来源：~/.ssh/config'
       node.appendChild(waiting)
     } else if (offline) {
@@ -1518,7 +1544,7 @@
       })
     })
     var alertCount = offlineCount + highLoadHosts + hotCards
-    document.title = (alertCount > 0 ? '(' + alertCount + ' 异常) ' : '') + '服务器资源监控'
+    document.title = (alertCount > 0 ? '(' + alertCount + ' 异常) ' : '') + '资源监控'
 
     els.clusterBar.textContent = ''
     if (!entries.length) {
@@ -1553,7 +1579,7 @@
     var table = el('table', 'list-table')
     var thead = document.createElement('thead')
     var htr = document.createElement('tr')
-    ;['', '服务器', 'CPU', '内存', '磁盘', 'GPU / NPU / DCU', '网络速率', '状态 / 延迟'].forEach(function (lbl) {
+    ;['监控', '服务器', 'CPU', '内存', '磁盘', 'GPU / NPU / DCU', '网络速率', '状态 / 延迟'].forEach(function (lbl) {
       htr.appendChild(el('th', '', lbl))
     })
     thead.appendChild(htr)
@@ -1563,20 +1589,14 @@
     visible.forEach(function (entry) {
       var offline = entry.status === 'offline'
       var connecting = entry.status === 'connecting'
+      var paused = entry.status === 'paused'
       var tr = document.createElement('tr')
-      if (!offline && !connecting) {
+      if (!offline && !connecting && !paused) {
         tr.addEventListener('click', function () { openDrawer(entry) })
       }
-      var pinTd = document.createElement('td')
-      var pinBtn = el('button', 'card-pin' + (entry.pinned ? ' active' : ''))
-      pinBtn.type = 'button'
-      pinBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="' + (entry.pinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
-      pinBtn.addEventListener('click', function (e) {
-        e.stopPropagation()
-        togglePin(entry)
-      })
-      pinTd.appendChild(pinBtn)
-      tr.appendChild(pinTd)
+      var monitorTd = document.createElement('td')
+      monitorTd.appendChild(monitorButton(entry))
+      tr.appendChild(monitorTd)
 
       var nameTd = document.createElement('td')
       nameTd.appendChild(el('b', '', entry.name || entry.host))
@@ -1781,6 +1801,9 @@
     state.procFilter = ''
     state.dockerSections = { images: false, running: false, stopped: false }
     state.dockerExpanded = Object.create(null)
+    state.dockerSelected = { images: new Set(), containers: new Set() }
+    state.dockerFocusId = null
+    state.dockerBatch = null
     els.drawerBackdrop.hidden = false
     document.body.style.overflow = 'hidden'
     updateDrawerHeader(entry)
@@ -1872,18 +1895,17 @@
     input.value = state.procFilter
     input.addEventListener('input', function () {
       state.procFilter = String(input.value || '').trim().toLowerCase()
-      renderDrawer()
+      applyProcFilter()
     })
     search.appendChild(input)
     toolbar.appendChild(search)
-    toolbar.appendChild(el('span', 'proc-meta', '采样于 ' + fmtRelative(data.sampledAt) + ' · 共 ' + procs.length + ' 个进程'))
+    var meta = el('span', 'proc-meta', '采样于 ' + fmtRelative(data.sampledAt) + ' · 共 ' + procs.length + ' 个进程')
+    meta.id = 'proc-filter-meta'
+    meta.setAttribute('data-base', '采样于 ' + fmtRelative(data.sampledAt) + ' · 共 ' + procs.length + ' 个进程')
+    toolbar.appendChild(meta)
     els.drawerBody.appendChild(toolbar)
 
-    var filtered = procs.filter(function (p) {
-      if (!state.procFilter) return true
-      var hay = [p.pid, p.user, p.command, p.state].join(' ').toLowerCase()
-      return hay.indexOf(state.procFilter) >= 0
-    })
+    var filtered = procs.slice()
 
     filtered.sort(function (a, b) {
       var k = state.procSortKey
@@ -1897,7 +1919,7 @@
     })
 
     if (!filtered.length) {
-      els.drawerBody.appendChild(el('div', 'target-empty', '没有匹配的进程。'))
+      els.drawerBody.appendChild(el('div', 'target-empty', '没有进程数据。'))
       return
     }
 
@@ -1928,12 +1950,14 @@
       })
       htr.appendChild(th)
     })
+    htr.appendChild(el('th', '', '操作'))
     thead.appendChild(htr)
     table.appendChild(thead)
 
     var tbody = document.createElement('tbody')
     filtered.forEach(function (p) {
       var tr = document.createElement('tr')
+      tr.setAttribute('data-proc-hay', [p.pid, p.user, p.command, p.state].join(' ').toLowerCase())
       tr.appendChild(el('td', 'mono', p.pid))
       tr.appendChild(el('td', '', p.user || '—'))
       var cpuTd = document.createElement('td')
@@ -1951,11 +1975,48 @@
       var cmdTd = el('td', 'cmd-cell mono', p.command)
       cmdTd.title = p.command
       tr.appendChild(cmdTd)
+      var actionTd = document.createElement('td')
+      var abortBtn = el('button', 'btn warn proc-action-btn', '中止')
+      abortBtn.type = 'button'
+      abortBtn.title = '中止进程 ' + p.pid
+      abortBtn.addEventListener('click', function (event) {
+        event.stopPropagation()
+        openKillModal(p)
+      })
+      actionTd.appendChild(abortBtn)
+      tr.appendChild(actionTd)
       tbody.appendChild(tr)
     })
+    var noMatch = document.createElement('tr')
+    noMatch.id = 'proc-no-match'
+    noMatch.hidden = true
+    var noMatchTd = document.createElement('td')
+    noMatchTd.colSpan = 8
+    noMatchTd.className = 'target-empty'
+    noMatchTd.textContent = '没有匹配的进程。'
+    noMatch.appendChild(noMatchTd)
+    tbody.appendChild(noMatch)
     table.appendChild(tbody)
     wrap.appendChild(table)
     els.drawerBody.appendChild(wrap)
+    applyProcFilter()
+  }
+
+  function applyProcFilter() {
+    var tbody = els.drawerBody.querySelector('tbody')
+    if (!tbody) return
+    var rows = tbody.querySelectorAll('tr[data-proc-hay]')
+    var filter = state.procFilter || ''
+    var visible = 0
+    rows.forEach(function (row) {
+      var match = filter === '' || String(row.getAttribute('data-proc-hay') || '').indexOf(filter) >= 0
+      row.hidden = !match
+      if (match) visible += 1
+    })
+    var noMatch = document.getElementById('proc-no-match')
+    if (noMatch) noMatch.hidden = visible !== 0
+    var meta = document.getElementById('proc-filter-meta')
+    if (meta) meta.textContent = (meta.getAttribute('data-base') || '') + (filter === '' ? '' : ' · 匹配 ' + visible + ' 个')
   }
 
   function renderVramProcesses(data) {
@@ -1978,7 +2039,7 @@
     var table = el('table', 'proc-table')
     var thead = document.createElement('thead')
     var htr = document.createElement('tr')
-    ;['类型', '卡号 / 设备', 'PID', '服务名', '显存占用', '占该卡比例', '操作'].forEach(function (label) {
+    ;['类型', '卡号 / 设备', 'PID', '服务名', '显存占用', '占该卡比例', '容器', '操作'].forEach(function (label) {
       htr.appendChild(el('th', '', label))
     })
     thead.appendChild(htr)
@@ -2001,16 +2062,29 @@
       var pctTd = document.createElement('td')
       pctTd.appendChild(miniMeter(p.memoryPercent, fmtPct(p.memoryPercent)))
       tr.appendChild(pctTd)
+      var containerTd = el('td', 'docker-container-cell', p.containerName || '宿主机进程')
+      if (p.containerName) containerTd.title = p.containerStatus || p.containerName
+      tr.appendChild(containerTd)
       var actionTd = document.createElement('td')
-      var killBtn = el('button', 'btn', '终止')
-      killBtn.type = 'button'
-      killBtn.style.padding = '2px 8px'
-      killBtn.style.fontSize = '11px'
-      killBtn.addEventListener('click', function (event) {
-        event.stopPropagation()
-        openKillModal(p)
-      })
-      actionTd.appendChild(killBtn)
+      if (p.containerName) {
+        var locateBtn = el('button', 'btn info proc-action-btn', '定位')
+        locateBtn.type = 'button'
+        locateBtn.title = '定位容器 ' + p.containerName
+        locateBtn.addEventListener('click', function (event) {
+          event.stopPropagation()
+          focusDockerFromProcess(p.containerId)
+        })
+        actionTd.appendChild(locateBtn)
+      } else {
+        var killBtn = el('button', 'btn warn proc-action-btn', '停止')
+        killBtn.type = 'button'
+        killBtn.title = '停止进程 ' + p.pid
+        killBtn.addEventListener('click', function (event) {
+          event.stopPropagation()
+          openKillModal(p)
+        })
+        actionTd.appendChild(killBtn)
+      }
       tr.appendChild(actionTd)
       tbody.appendChild(tr)
     })
@@ -2173,6 +2247,91 @@
     return detailBtn
   }
 
+  function dockerImageRef(image) {
+    return (image.repository || '<none>') + ':' + (image.tag || '<none>')
+  }
+
+  function dockerDependents(docker, image) {
+    var ref = dockerImageRef(image).toLowerCase()
+    return [...(docker.running || []), ...(docker.stopped || [])].filter(function (container) {
+      return container.imageId === image.id || String(container.image || '').toLowerCase() === ref
+    })
+  }
+
+  function dockerCheckbox(kind, item) {
+    var box = document.createElement('input')
+    box.type = 'checkbox'
+    box.setAttribute('data-docker-check', kind + ':' + item.id)
+    box.checked = state.dockerSelected[kind].has(item.id)
+    box.addEventListener('click', function (event) { event.stopPropagation() })
+    box.addEventListener('change', function () {
+      if (box.checked) state.dockerSelected[kind].add(item.id)
+      else state.dockerSelected[kind].delete(item.id)
+      updateDockerBatchBar()
+    })
+    return box
+  }
+
+  function updateDockerBatchBar() {
+    var bar = document.getElementById('docker-batch-bar')
+    if (!bar) return
+    var total = state.dockerSelected.images.size + state.dockerSelected.containers.size
+    bar.hidden = total === 0
+    var label = bar.querySelector('[data-count]')
+    if (label) label.textContent = '已选 ' + total + ' 个'
+  }
+
+  function dockerBatchDelete(kind) {
+    var selected = [...state.dockerSelected[kind]]
+    if (selected.length === 0) return
+    var label = kind === 'images' ? '镜像' : '容器'
+    if (!window.confirm('确认批量删除 ' + selected.length + ' 个' + label + '？此操作不可恢复。')) return
+    fetch('api/hosts/' + encodeURIComponent(state.drawerHostId) + '/docker/batch', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
+      body: JSON.stringify({ kind: kind === 'images' ? 'image' : 'container', action: kind === 'images' ? 'rmi' : 'rm', targets: selected }),
+    })
+      .then(function (response) { return response.json() })
+      .then(function (body) {
+        var failures = (body.results || []).filter(function (item) { return !item.ok })
+        if (failures.length) {
+          var text = failures.map(function (item) {
+            var names = (item.blockingContainers || []).map(function (c) { return c.name }).join('、')
+            return item.target + '：' + item.error + (names ? '（容器：' + names + '）' : '')
+          }).join('\n')
+          window.alert('部分删除失败：\n' + text)
+        }
+        state.dockerSelected[kind] = new Set()
+        loadDrawerDetails(true)
+      })
+      .catch(function (error) { window.alert('批量删除失败：' + (error.message || error)) })
+  }
+
+  function focusDockerFromProcess(id) {
+    state.drawerTab = 'docker'
+    document.querySelectorAll('.drawer-tabs .tab-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-tab') === 'docker')
+    })
+    focusDockerContainer(id)
+  }
+
+  function focusDockerContainer(id) {
+    var container = [...((state.drawerData && state.drawerData.docker && state.drawerData.docker.running) || []), ...((state.drawerData && state.drawerData.docker && state.drawerData.docker.stopped) || [])]
+      .find(function (item) { return item.id === id })
+    if (!container) return
+    var section = ((state.drawerData.docker.running || []).some(function (item) { return item.id === id })) ? 'running' : 'stopped'
+    state.dockerSections[section] = true
+    state.dockerFocusId = id
+    renderDrawer()
+    window.setTimeout(function () {
+      var card = document.querySelector('[data-container-id="' + id + '"]')
+      if (!card) return
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      card.classList.add('docker-flash')
+      window.setTimeout(function () { card.classList.remove('docker-flash') }, 1600)
+    }, 80)
+  }
+
   function renderDockerProcesses(data) {
     var docker = (data && data.docker) || { available: false, images: [], running: [], stopped: [] }
     if (!docker.available) {
@@ -2180,22 +2339,59 @@
       return
     }
     els.drawerBody.appendChild(el('div', 'proc-meta', '镜像 ' + docker.images.length + ' 个 · 运行中容器 ' + docker.running.length + ' 个 · 停止容器 ' + docker.stopped.length + ' 个'))
+    var bar = el('div', 'docker-batch-bar')
+    bar.id = 'docker-batch-bar'
+    bar.hidden = true
+    bar.appendChild(el('span', '', '已选 0 个')).setAttribute('data-count', '')
+    var batchImages = el('button', 'btn danger docker-action-btn', '批量删除镜像')
+    batchImages.type = 'button'
+    batchImages.addEventListener('click', function () { dockerBatchDelete('images') })
+    var batchContainers = el('button', 'btn danger docker-action-btn', '批量删除容器')
+    batchContainers.type = 'button'
+    batchContainers.addEventListener('click', function () { dockerBatchDelete('containers') })
+    bar.appendChild(batchImages)
+    bar.appendChild(batchContainers)
+    els.drawerBody.appendChild(bar)
 
     dockerSection('images', '镜像列表', docker.images, function (image) {
       var card = el('div', 'docker-card')
       var head = el('div', 'docker-card-head')
-      head.appendChild(el('div', 'docker-name', (image.repository || '<none>') + ':' + (image.tag || '<none>')))
+      var left = el('div', 'docker-left')
+      left.appendChild(dockerCheckbox('images', image))
+      left.appendChild(el('div', 'docker-name', dockerImageRef(image)))
+      head.appendChild(left)
       head.appendChild(dockerButton('删除', 'image', 'rmi', image, 'danger'))
       card.appendChild(head)
       card.appendChild(el('div', 'docker-sub', 'ID ' + image.shortId))
       card.appendChild(dockerMeta(['大小 ' + image.size, '创建 ' + image.created]))
+      var deps = dockerDependents(docker, image)
+      if (deps.length) {
+        var treeButton = el('button', 'docker-tree-toggle', '依赖容器 ' + deps.length)
+        treeButton.type = 'button'
+        var tree = el('div', 'docker-tree')
+        tree.hidden = true
+        deps.forEach(function (container) {
+          var item = el('button', 'docker-tree-item', '└─ ' + container.name + ' · ' + container.status)
+          item.type = 'button'
+          item.addEventListener('click', function () { focusDockerContainer(container.id) })
+          tree.appendChild(item)
+        })
+        treeButton.addEventListener('click', function () { tree.hidden = !tree.hidden; treeButton.textContent = (tree.hidden ? '依赖容器 ' : '收起依赖 ') + deps.length })
+        card.appendChild(treeButton)
+        card.appendChild(tree)
+      }
       return card
     }, '没有镜像。')
 
     dockerSection('running', '运行中的容器', docker.running, function (container) {
       var card = el('div', 'docker-card')
+      card.setAttribute('data-container-id', container.id)
+      if (state.dockerFocusId === container.id) card.classList.add('docker-focus')
       var head = el('div', 'docker-card-head')
-      head.appendChild(el('div', 'docker-name', container.name || container.shortId))
+      var left = el('div', 'docker-left')
+      left.appendChild(dockerCheckbox('containers', container))
+      left.appendChild(el('div', 'docker-name', container.name || container.shortId))
+      head.appendChild(left)
       var actions = el('span', 'docker-actions')
       actions.appendChild(dockerButton('停止', 'container', 'stop', container, 'warn'))
       actions.appendChild(dockerButton('重启', 'container', 'restart', container, 'info'))
@@ -2211,8 +2407,13 @@
 
     dockerSection('stopped', '停止的容器', docker.stopped, function (container) {
       var card = el('div', 'docker-card')
+      card.setAttribute('data-container-id', container.id)
+      if (state.dockerFocusId === container.id) card.classList.add('docker-focus')
       var head = el('div', 'docker-card-head')
-      head.appendChild(el('div', 'docker-name', container.name || container.shortId))
+      var left = el('div', 'docker-left')
+      left.appendChild(dockerCheckbox('containers', container))
+      left.appendChild(el('div', 'docker-name', container.name || container.shortId))
+      head.appendChild(left)
       var right = el('div', 'docker-head-actions')
       right.appendChild(dockerButton('启动', 'container', 'start', container, 'ok'))
       right.appendChild(dockerButton('删除', 'container', 'rm', container, 'danger'))
@@ -2223,6 +2424,7 @@
       card.appendChild(dockerMeta([container.status, dockerPortText(container), container.networks ? '网络 ' + container.networks : '']))
       return card
     }, '没有停止的容器。')
+    updateDockerBatchBar()
   }
 
   function renderHwDetails(entry, data) {
@@ -2254,6 +2456,10 @@
       els.drawerBody.appendChild(el('div', 'collecting', '正在采集系统进程与算力卡显存占用…'))
       return
     }
+    if (state.drawerData.paused) {
+      els.drawerBody.appendChild(el('div', 'target-empty', '这台服务器已停止监控。在服务器卡片上点击「开启监控」即可恢复采集。'))
+      return
+    }
     var entry = findEntryById(state.drawerHostId)
     if (state.drawerTab === 'top') renderTopProcesses(state.drawerData)
     else if (state.drawerTab === 'vram') renderVramProcesses(state.drawerData)
@@ -2281,6 +2487,38 @@
     }).catch(function (error) {
       showBanner((error && error.message) || String(error))
     })
+  }
+
+  function toggleMonitor(entry) {
+    if (!writeToken) {
+      showBanner('页面令牌缺失，请刷新页面后重试')
+      return
+    }
+    fetch('api/hosts/' + encodeURIComponent(entry.id) + '/monitor', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
+      body: JSON.stringify({ paused: !entry.paused }),
+    }).then(function (r) { return r.json() }).then(function (body) {
+      if (!body || body.ok !== true) throw new Error((body && body.error) || '监控状态切换失败')
+      load(true)
+    }).catch(function (error) {
+      showBanner((error && error.message) || String(error))
+    })
+  }
+
+  function monitorButton(entry) {
+    var btn = el('button', 'card-monitor' + (entry.paused ? ' paused' : ''))
+    btn.type = 'button'
+    btn.title = entry.paused ? '开启监控' : '停止监控'
+    btn.setAttribute('aria-label', entry.paused ? '开启监控' : '停止监控')
+    btn.innerHTML = entry.paused
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"></path></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"></rect></svg>'
+    btn.addEventListener('click', function (event) {
+      event.stopPropagation()
+      toggleMonitor(entry)
+    })
+    return btn
   }
 
   function copyDrawerSummary() {
@@ -3013,7 +3251,10 @@
       })
       .then(function (result) {
         if (!result.ok || !result.body || result.body.ok !== true) {
-          throw new Error((result.body && result.body.error) || 'Docker 操作失败')
+          var dockerMsg = (result.body && result.body.error) || 'Docker 操作失败'
+          var blockers = (result.body && result.body.blockingContainers) || []
+          if (blockers.length) dockerMsg += '（仍在使用：' + blockers.map(function (item) { return item.name }).join('、') + '）'
+          throw new Error(dockerMsg)
         }
         closeDockerModal()
         state.dockerInspectCache = Object.create(null)
@@ -3040,11 +3281,12 @@
     if (!Number.isInteger(pid) || pid <= 0) return
     var name = process.serviceName || process.name || ('PID ' + pid)
     state.killTarget = { pid: pid, name: name }
-    els.killText.textContent = '确认终止「' + name + '」（PID ' + pid + '）？\n将向该进程发送 SIGTERM，正在运行的任务会被中断。'
+    els.killText.textContent = '确认中止「' + name + '」（PID ' + pid + '）？\n将向该进程发送 SIGTERM，正在运行的任务会被中断。'
     els.killError.hidden = true
     els.killError.textContent = ''
+    els.killForce.hidden = true
     els.killConfirm.disabled = false
-    els.killConfirm.textContent = '终止进程'
+    els.killConfirm.textContent = '中止进程'
     els.killModal.hidden = false
   }
 
@@ -3053,17 +3295,19 @@
     els.killModal.hidden = true
   }
 
-  function confirmKill() {
+  function confirmKill(signal) {
     var target = state.killTarget
     var hostId = state.drawerHostId
     if (!target || !hostId) return
+    var sig = signal === 'KILL' ? 'KILL' : 'TERM'
     els.killConfirm.disabled = true
-    els.killConfirm.textContent = '终止中…'
+    els.killForce.disabled = true
+    els.killConfirm.textContent = sig === 'KILL' ? '强制杀死中…' : '中止中…'
     els.killError.hidden = true
     fetch('api/hosts/' + encodeURIComponent(hostId) + '/kill', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
-      body: JSON.stringify({ pid: target.pid, signal: 'TERM' }),
+      body: JSON.stringify({ pid: target.pid, signal: sig }),
     })
       .then(function (response) {
         return response.json().catch(function () { return {} }).then(function (body) {
@@ -3075,18 +3319,27 @@
           throw new Error((result.body && result.body.error) || '终止失败')
         }
         closeKillModal()
-        showBanner('已向「' + target.name + '」（PID ' + target.pid + '）发送 SIGTERM')
+        showBanner('已向「' + target.name + '」（PID ' + target.pid + '）发送 SIG' + sig)
         loadDrawerDetails(true)
       })
       .catch(function (error) {
         els.killError.hidden = false
         els.killError.textContent = (error && error.message) || String(error)
         els.killConfirm.disabled = false
-        els.killConfirm.textContent = '重试终止'
+        els.killForce.disabled = false
+        els.killConfirm.textContent = '重试中止'
+        if (sig === 'TERM') {
+          els.killForce.hidden = false
+          els.killForce.textContent = '强制杀死（SIGKILL）'
+          els.killForce.title = 'SIGTERM 未生效，强制杀死不会给进程清理机会'
+        }
       })
   }
 
-  els.killConfirm.addEventListener('click', confirmKill)
+  els.killConfirm.addEventListener('click', function () { confirmKill('TERM') })
+  els.killForce.addEventListener('click', function () {
+    if (window.confirm('强制杀死不会给进程保存状态或释放资源的机会，确认继续？')) confirmKill('KILL')
+  })
   els.killCancel.addEventListener('click', closeKillModal)
   els.killClose.addEventListener('click', closeKillModal)
   els.killModal.addEventListener('click', function (event) {

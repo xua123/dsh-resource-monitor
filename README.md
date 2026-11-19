@@ -1,198 +1,158 @@
-# 服务器资源监控（dsh-server-monitor）
+# dsh-server-monitor
 
-在 DeepSeek Harness 左侧栏和会话工作区中查看本机与 SSH 服务器的实时资源：CPU、内存、磁盘、网络，以及 NVIDIA GPU / 华为昇腾 NPU / 海光 DCU 的利用率、显存、功耗和占用进程。
+A server resource monitor for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It shows local and SSH server usage in the DSH sidebar and in a per-session tab.
 
-![服务器资源监控](docs/preview.png)
+[中文说明](#中文说明)
 
-## 两种使用入口
+## Features
 
-### 全局服务器资源
+- **Host resources** — CPU, memory, swap, disk mounts, network throughput, load average, uptime and SSH latency.
+- **Accelerators** — per-card utilization, memory, temperature and power for NVIDIA GPU, Huawei Ascend NPU and Hygon DCU.
+- **Processes** — sortable process table, process search, and confirmed `SIGTERM` termination with a `SIGKILL` fallback.
+- **Docker** — image and container lists, start/stop/restart/delete, multi-select deletion, startup parameters, and an image-to-container dependency tree.
+- **Two scopes** — a global server panel and a session-scoped server tab that follows the current workspace.
+- **Read-only collection** — resource samples use read-only commands; credentials stay on the local machine.
 
-点击左侧栏的服务器图标，打开全局监控面板。
+## Install
 
-- 展示本机 + `~/.ssh/config` + 面板手动添加的全部服务器；
-- 顶部汇总在线数量、算力卡数量、显存总量和异常提醒；
-- 支持搜索、按类型/标签筛选、卡片/列表视图；
-- 默认按**剩余显存**从大到小排序，本机固定第一；
-- 可切换 CPU、内存、显存平均利用率排序，选择会记住。
-
-### 会话 / 工作区服务器资源
-
-在会话标签栏打开「服务器资源」页签。
-
-- 读取当前会话的 DSH 会话元数据（`cwd`），自动识别该会话链接的服务器；
-- 远程工作区镜像路径会匹配 `~/.ssh/config` 的 `HostName`；
-- 只显示当前会话对应的那一台服务器，不受全局筛选/隐藏/认证失败隐藏影响；
-- 识别不到时可用右上角下拉手动选择；
-- 不读取 dsh-remote 的 `machines.json` 或镜像元数据。
-
-## 显示的资源
-
-| 类别 | 内容 |
-| --- | --- |
-| CPU | 使用率、核心数、型号、1/5/15 分钟负载 |
-| 内存 | 已用 / 总量、占用率、Swap |
-| 磁盘 | 根分区及各挂载点容量、已用 / 总量、峰值分区 |
-| 网络 | 实时收/发速率 |
-| 系统 | 主机名、系统版本、内核、运行时间、SSH 延迟 |
-| 容器 | 容器内 CPU / 内存 limit（检测到容器时） |
-| NVIDIA GPU | 型号、利用率、显存、温度、功耗 / 上限、Compute Capability |
-| 华为昇腾 NPU | 型号、AICore 利用率、显存、温度、功耗；兼容 310P3 / 910B |
-| 海光 DCU | 型号、利用率、VRAM、温度、功耗；兼容 `hy-smi` JSON/表格 |
-| 算力卡进程 | 每张卡的 PID、服务名、显存占用、占卡比例 |
-| 进程 | 按需加载，支持搜索、排序、迷你进度条 |
-| 镜像 / 容器详情 | 镜像列表、运行中容器、已停止容器；支持容器启停/重启、镜像删除 |
-
-每张算力卡显示：
-
-- **平均利用率**：默认按刷新间隔做滚动平均，避免推理服务 burst 导致长期显示 0%；
-- **功耗**：实际 / 上限（W），例如 `59 W / 250 W`；
-- **显存**：已用 / 总量 + 占卡比例进度条。
-
-## 进程查看与终止
-
-点击在线服务器卡片打开右侧「占用详情」：
-
-- **进程详情**：按 CPU 排序的系统进程；
-- **显存详情**：算力卡上占用显存的进程；
-- 服务名优先取 systemd unit / 脚本名，例如 `llama-server`、`vllm`、`hexocr`，不显示裸 PID 占位；
-- 每行提供「终止」按钮，弹出二次确认后发送 `SIGTERM`；
-- 只允许终止当前详情列表中存在的 PID；
-- 权限不足、进程已退出等失败原因会直接显示。
-
-### 进程详情
-
-![进程详情](docs/preview-processes.png)
-
-### 显存详情
-
-![显存详情](docs/preview-memory.png)
-
-## 镜像与容器
-
-「占用详情 → 镜像 / 容器详情」按三块展示；三块默认收起，点击分组标题展开：
-
-1. **镜像列表**：镜像名:Tag、ID、大小、创建时间，支持删除；
-2. **运行中容器**：名称、镜像、状态、端口，支持停止/重启；
-3. **已停止容器**：名称、镜像、状态、端口，支持启动。
-
-容器以卡片展示，操作按钮紧凑并右对齐；端口映射直接显示；使用 `host` 网络的容器会标注“使用宿主端口”，未映射也会提示。每张容器卡片右侧有「详情」文字按钮，点击展开启动参数（自动刷新时保持展开，不会自动收起）：完整 ID、镜像、Entrypoint/Cmd、环境变量（密码/Token 等敏感值自动隐藏）、工作目录/运行用户、特权模式、CapAdd、设备、Runtime、内存/CPU 限制、状态/退出码、创建/启动/结束时间、重启策略、网络模式与 IP、端口、挂载目录。启动（绿）、停止（橙）、重启（蓝）、删除（红）按钮颜色区分。
-
-容器启停、重启和镜像删除都会弹出确认框，失败原因（权限不足、镜像被容器占用、容器不存在等）直接显示。Docker 不可用或无权限时显示提示，不影响其他资源。
-
-### 镜像 / 容器详情
-
-![镜像 / 容器详情](docs/preview-docker.png)
-
-## 安装
-
-### 从 GitHub 安装
-
-1. 打开 **设置 → 插件 → 安装**；
-2. 填入仓库地址：
-
-```text
-https://github.com/xua123/dsh-server-monitor
-```
-
-3. 安装后**完全退出 DSH**（托盘 Quit），再重新启动。
-
-### 从 npm 安装
+### npm
 
 ```bash
 dsh plugin --profile desktop add dsh-server-monitor
 ```
 
-### 本地 tgz
+### GitHub
 
-```bash
-dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-monitor-0.1.0.tgz
-```
-
-要求：DSH `>= 0.2.1-rc.1`，Node `>= 20`。
-
-## 快速开始
-
-1. 在 `~/.ssh/config` 配置服务器，推荐使用密钥：
-
-```sshconfig
-Host gpu-01
-  HostName 192.0.2.20
-  User ml
-  IdentityFile ~/.ssh/id_ed25519
-```
-
-2. 重启 DSH，点击左侧栏服务器图标；
-3. 需要密码认证的服务器，在面板「添加服务器」里手动添加；
-4. 工作区页签会自动绑定当前会话的服务器，也可手动选择。
-
-## 配置
-
-在 profile 的 `cordis.yml` / `cordis.patch.yml` 中：
-
-```yaml
-- id: dsh-server-monitor
-  name: dsh-server-monitor
-  config:
-    refreshMs: 60000       # 刷新间隔，同时作为平均利用率窗口
-    cacheMs: 2500          # 服务端快照缓存
-    waitMs: 800            # 首次请求最多等待时间
-    maxConcurrent: 6       # 并发 SSH 数
-    commandTimeoutMs: 12000
-    connectTimeoutMs: 8000
-    idleCloseMs: 120000
-    hideAuthFailures: true
-    includeSshConfig: true
-    sshConfigFile: ''      # 默认 ~/.ssh/config
-    ignoreHosts: []
-    hostKeyPolicy: tofu    # tofu | off
-    showLocal: true
-```
-
-## 服务器来源
-
-| 来源 | 说明 |
-| --- | --- |
-| 本机 | Node `os` + `fs.statfs` |
-| `~/.ssh/config` | `HostName`、`User`、`Port`、`IdentityFile`、`Host *`、`Include` |
-| 手动添加 | 支持密码 / 私钥，优先于同名主机 |
-
-同一 `host:port` 只显示一张卡片。插件**不依赖 dsh-remote**，不读取其注册表。
-
-## 权限与安全
-
-- 日常采集只执行只读命令（`/proc`、`df`、`nvidia-smi`、`npu-smi`、`hy-smi` 等），不写远程文件；
-- 终止进程只允许当前详情列表中的 PID，需要页面 token，并二次确认；
-- 只发送 `SIGTERM`，不执行 `kill -9`；
-- 手动添加的密码以明文保存在 `~/.dsh/server-monitor/targets.json`（权限 `0600`）；介意明文请使用密钥；
-- 隐藏列表、别名、选择范围保存在 `~/.dsh/server-monitor/`，权限 `0600`。
-
-## 已知限制
-
-- 远程采集面向 Linux；Windows 仅支持本机；
-- `ProxyJump` / `ProxyCommand` 暂不生效；
-- DCGM exporter / Prometheus 不是必需依赖；
-- NPU / DCU 的功耗上限取决于厂商工具是否提供，没有上限时只显示实际功耗；
-- 工作区自动识别依赖会话元数据中的 `cwd`，识别不到时请手动选择服务器。
-
-## 插件市场
-
-DSH 目前没有官方插件索引，使用本仓库自带的 format 1 索引即可。
-
-索引地址：
+1. Open **Settings → Plugins → Install**.
+2. Enter:
 
 ```text
-https://raw.githubusercontent.com/xua123/dsh-server-monitor/main/market/index.json
+https://github.com/xua123/dsh-server-monitor
 ```
 
-使用方式：
+3. Quit DSH completely, then start it again.
 
-1. 打开 **插件 → 发现**；
-2. 添加索引 URL；
-3. 选择「服务器资源监控」安装。
+### GitHub Release tarball
 
-当前索引使用 npm 版本 `0.1.0`。
+```text
+https://github.com/xua123/dsh-server-monitor/releases/download/v0.2.0/dsh-server-monitor-0.2.0.tgz
+```
+
+The URL is pinned to `v0.2.0`, so the asset name can safely contain the version.
+
+Requirements: DSH `>= 0.2.1-rc.1`, Node `>= 20`.
+
+## Usage
+
+### Global panel
+
+Click the server icon in the left sidebar. The panel lists:
+
+- the local machine;
+- hosts discovered from `~/.ssh/config`;
+- hosts added manually in the panel.
+
+It supports search, tag filters, card/list views, and sorting by remaining accelerator memory, CPU, memory or average utilization.
+
+### Session tab
+
+Open the **资源监控** tab in a conversation. The tab reads the session workspace and shows the matching server only. If no server can be matched, choose one from the selector in the tab header.
+
+## Resource coverage
+
+| Area | Data |
+| --- | --- |
+| CPU | usage, cores, model, 1/5/15-minute load |
+| Memory | used/total, percentage, swap |
+| Disk | root and mounted filesystems, used/total, busiest mount |
+| Network | receive/transmit rate |
+| System | hostname, OS, kernel, uptime, SSH latency |
+| GPU | utilization, memory, temperature, power, compute capability |
+| NPU | AICore utilization, memory, temperature, power; Ascend 310P/910B compatible |
+| DCU | utilization, VRAM, temperature, power; `hy-smi` JSON/table compatible |
+| Containers | CPU/memory limits when running inside a container |
+
+## Process and Docker operations
+
+Process termination and Docker mutations require the page token and a confirmation dialog.
+
+- A process can only be terminated if its PID is present in the current detail view.
+- `SIGTERM` is sent first; if the process remains, a separate **强制杀死（SIGKILL）** action is offered.
+- Container start, stop, restart and delete are confirmed.
+- Image deletion reports the containers that still reference the image.
+- Running containers must be stopped before they can be deleted.
+
+## Security and privacy
+
+- Resource collection uses read-only commands such as `/proc`, `df`, `nvidia-smi`, `npu-smi` and `hy-smi`.
+- The plugin does not upload telemetry or resource data.
+- Manually added passwords are stored locally in `~/.dsh/server-monitor/targets.json` with mode `0600`; use SSH keys where possible.
+- Host visibility, aliases and selection state are stored locally under `~/.dsh/server-monitor/`.
+- The repository contains no server addresses, credentials, private hostnames or customer data.
+
+## Limitations
+
+- Remote collection targets Linux; Windows is supported for the local host only.
+- `ProxyJump` / `ProxyCommand` are not supported yet.
+- DCGM exporter or Prometheus is not required.
+- NPU/DCU power limits depend on the vendor tool; only actual power is shown when no limit is available.
+- Session scoping depends on DSH session `cwd` metadata; use the manual selector when it cannot be resolved.
+
+## Development
+
+```bash
+npm install
+npm test
+npm pack
+```
 
 ## License
 
 MIT
+
+---
+
+## 中文说明
+
+在 DeepSeek Harness 中查看本机与 SSH 服务器资源，提供全局面板和会话页签两种入口。
+
+### 功能
+
+- **基础资源**：CPU、内存、Swap、磁盘、网络、负载、运行时间、SSH 延迟。
+- **异构算力**：NVIDIA GPU / 华为昇腾 NPU / 海光 DCU 的利用率、显存、温度、功耗。
+- **进程**：可搜索、排序的进程表；确认后发送 `SIGTERM`，失败可再确认发送 `SIGKILL`。
+- **Docker**：镜像和容器列表、启停/重启/删除、批量删除、启动参数、镜像依赖树。
+- **两种入口**：全局服务器面板；跟随当前会话工作区的服务器页签。
+- **只读采集**：资源采样只执行只读命令，凭据保存在本地。
+
+### 安装
+
+```bash
+dsh plugin --profile desktop add dsh-server-monitor
+```
+
+或在 **设置 → 插件 → 安装** 中填入：
+
+```text
+https://github.com/xua123/dsh-server-monitor
+```
+
+安装后完全退出 DSH（托盘 Quit）再启动。
+
+### 使用
+
+- 点击左侧栏服务器图标打开全局面板；
+- 在会话中打开「资源监控」页签查看当前工作区服务器；
+- 需要密码认证的服务器可在面板中手动添加。
+
+### 安全
+
+- 不上传遥测或资源数据；
+- 手动添加的密码仅保存在本机 `~/.dsh/server-monitor/targets.json`（`0600`）；
+- 仓库中不包含服务器地址、凭据、私有主机名或客户数据。
+
+### 限制
+
+- 远程采集面向 Linux，Windows 仅支持本机；
+- 暂不支持 `ProxyJump` / `ProxyCommand`；
+- NPU/DCU 功耗上限取决于厂商工具。
