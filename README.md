@@ -60,6 +60,14 @@
 - 只允许终止当前详情列表中存在的 PID；
 - 权限不足、进程已退出等失败原因会直接显示。
 
+### 进程详情
+
+![进程详情](docs/preview-processes.png)
+
+### 显存详情
+
+![显存详情](docs/preview-memory.png)
+
 ## 镜像与容器
 
 「占用详情 → 镜像 / 容器详情」按三块展示；三块默认收起，点击分组标题展开：
@@ -71,6 +79,10 @@
 容器以卡片展示，操作按钮紧凑并右对齐；端口映射直接显示；使用 `host` 网络的容器会标注“使用宿主端口”，未映射也会提示。每张容器卡片右侧有「详情」文字按钮，点击展开启动参数（自动刷新时保持展开，不会自动收起）：完整 ID、镜像、Entrypoint/Cmd、环境变量（密码/Token 等敏感值自动隐藏）、工作目录/运行用户、特权模式、CapAdd、设备、Runtime、内存/CPU 限制、状态/退出码、创建/启动/结束时间、重启策略、网络模式与 IP、端口、挂载目录。启动（绿）、停止（橙）、重启（蓝）、删除（红）按钮颜色区分。
 
 容器启停、重启和镜像删除都会弹出确认框，失败原因（权限不足、镜像被容器占用、容器不存在等）直接显示。Docker 不可用或无权限时显示提示，不影响其他资源。
+
+### 镜像 / 容器详情
+
+![镜像 / 容器详情](docs/preview-docker.png)
 
 ## 安装
 
@@ -94,7 +106,7 @@ dsh plugin --profile desktop add dsh-server-resource-monitor
 ### 本地 tgz
 
 ```bash
-dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.9.6.tgz
+dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.9.7.tgz
 ```
 
 要求：DSH `>= 0.2.1-rc.1`，Node `>= 20`。
@@ -165,9 +177,9 @@ Host gpu-01
 
 ## 插件市场
 
-DSH 当前**没有官方插件索引**，因此没有集中“申请收录”的入口。收录方式是发布一份 **format 1 插件市场索引 JSON**，用户把索引 URL 加到「插件 → 发现」中。
+DSH 目前没有官方插件索引，使用本仓库自带的 format 1 索引即可。
 
-本仓库自带索引：
+索引地址：
 
 ```text
 https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/market/index.json
@@ -176,27 +188,10 @@ https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/market/index.
 使用方式：
 
 1. 打开 **插件 → 发现**；
-2. 添加上面的索引 URL；
-3. 在列表中选择「服务器资源监控」安装。
+2. 添加索引 URL；
+3. 选择「服务器资源监控」安装。
 
-索引条目使用 npm 版本 `0.9.6`；发布到 npm 后即可通过市场安装。若你维护第三方 DSH 插件索引，也可以把 `market/index.json` 里的条目合并进去。
-
-## 开发
-
-```bash
-npm install
-npm test
-npm pack
-```
-
-发布新版本：
-
-```bash
-npm version patch
-git push --follow-tags
-```
-
-GitHub 上发布 Release 后，`.github/workflows/publish.yml` 会自动发布到 npm（需要仓库 secret `NPM_TOKEN`）。
+当前索引使用 npm 版本 `0.9.7`。
 
 ## License
 
