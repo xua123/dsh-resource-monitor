@@ -106,7 +106,7 @@ dsh plugin --profile desktop add dsh-server-resource-monitor
 ### 本地 tgz
 
 ```bash
-dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-1.0.0.tgz
+dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.1.0.tgz
 ```
 
 要求：DSH `>= 0.2.1-rc.1`，Node `>= 20`。
@@ -191,7 +191,7 @@ https://raw.githubusercontent.com/xua123/dsh-server-resource-monitor/main/market
 2. 添加索引 URL；
 3. 选择「服务器资源监控」安装。
 
-当前索引使用 npm 版本 `1.0.0`。
+当前索引使用 npm 版本 `0.1.0`。
 
 ## License
 
