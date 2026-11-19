@@ -268,7 +268,7 @@
 
   .modal[hidden] { display: none; }
   .modal {
-    position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+    position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
     padding: 20px; background: rgba(5, 8, 14, .62); backdrop-filter: blur(4px);
   }
   .modal-panel {
@@ -511,10 +511,11 @@
   .docker-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .docker-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 650; color: var(--text); word-break: break-all; }
   .docker-head-actions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
+  .docker-head-actions .btn { display: inline-flex; align-items: center; justify-content: center; }
+  .docker-actions { display: inline-flex; align-items: center; gap: 6px; }
   button.btn.docker-action-btn { padding: 1px 8px; height: 22px; font-size: 10.5px; line-height: 18px; border-radius: 6px; }
   .docker-sub { margin-top: 4px; font-size: 10.5px; color: var(--muted); word-break: break-all; line-height: 1.5; }
   .docker-meta { margin-top: 7px; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 10.5px; color: var(--text-2); }
-  .docker-card .docker-actions { margin-top: 8px; }
   .docker-detail-btn { min-width: 42px; }
   .docker-detail { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--border); display: grid; gap: 5px; }
   .docker-detail-row { display: flex; gap: 9px; font-size: 10.5px; line-height: 1.5; }
@@ -843,6 +844,7 @@
     dockerTarget: null,
     dockerInspectCache: Object.create(null),
     dockerSections: { images: false, running: false, stopped: false },
+    dockerExpanded: Object.create(null),
     drawerTab: 'top',
     drawerData: null,
     drawerError: null,
@@ -1778,6 +1780,7 @@
     state.drawerError = null
     state.procFilter = ''
     state.dockerSections = { images: false, running: false, stopped: false }
+    state.dockerExpanded = Object.create(null)
     els.drawerBackdrop.hidden = false
     document.body.style.overflow = 'hidden'
     updateDrawerHeader(entry)
@@ -2117,21 +2120,17 @@
   }
 
   function attachDockerDetail(card, container) {
+    var hostId = state.drawerHostId
+    var key = String(hostId) + '|' + container.id
+    var open = state.dockerExpanded[key] === true
     var detail = el('div', 'docker-detail')
-    detail.hidden = true
-    var detailBtn = el('button', 'btn docker-action-btn docker-detail-btn', '详情')
+    detail.hidden = !open
+    var detailBtn = el('button', 'btn docker-action-btn docker-detail-btn', open ? '收起' : '详情')
     detailBtn.type = 'button'
-    detailBtn.title = '展开容器启动参数'
+    detailBtn.title = open ? '收起容器启动参数' : '展开容器启动参数'
     detailBtn.setAttribute('aria-label', '展开容器启动参数')
-    detailBtn.addEventListener('click', function (event) {
-      event.stopPropagation()
-      var opening = detail.hidden
-      detail.hidden = !opening
-      detailBtn.textContent = opening ? '收起' : '详情'
-      detailBtn.title = opening ? '收起容器启动参数' : '展开容器启动参数'
-      if (!opening) return
-      var hostId = state.drawerHostId
-      var key = String(hostId) + '|' + container.id
+
+    function loadDetail() {
       var cached = state.dockerInspectCache[key]
       if (cached) {
         renderDockerInspect(detail, cached)
@@ -2157,8 +2156,20 @@
         .catch(function (error) {
           detail.textContent = '加载失败：' + ((error && error.message) || String(error))
         })
+    }
+
+    detailBtn.addEventListener('click', function (event) {
+      event.stopPropagation()
+      var opening = detail.hidden
+      detail.hidden = !opening
+      state.dockerExpanded[key] = opening
+      detailBtn.textContent = opening ? '收起' : '详情'
+      detailBtn.title = opening ? '收起容器启动参数' : '展开容器启动参数'
+      if (opening) loadDetail()
     })
+
     card.appendChild(detail)
+    if (open) loadDetail()
     return detailBtn
   }
 
