@@ -9,7 +9,7 @@
 - 每台服务器一张卡片：CPU、内存、磁盘（显示**已用 / 总容量**与峰值挂载点）、负载、运行时间、SSH 延迟，以及最近 40 次 CPU 采样的迷你曲线。
 - **异构算力卡（GPU / NPU / DCU）**：支持 NVIDIA GPU（`nvidia-smi`）、华为昇腾 NPU（`npu-smi`）、海光 DCU / AMD GPU（`hy-smi` / `rocm-smi`），逐卡展示**平均利用率**、**功耗实际 / 上限（W）**与显存 / HBM 占用进度条。
 - **默认按显存剩余排序**：本机固定第一，其余按每台服务器所有算力卡的**剩余显存总量**从大到小排列；也可切换 CPU / 内存 / 显存平均利用率排序。
-- **只读进程与显存进程抽屉**：点击任意在线卡片打开右侧详情抽屉，查看类似 `top` 的系统进程（支持搜索、多列排序与迷你进度条）、各算力卡的显存 / HBM 占用进程明细以及完整磁盘分区列表；日常轮询不采集进程列表，对服务器几乎无额外负载。
+- **进程与显存进程抽屉**：点击任意在线卡片打开右侧详情抽屉，查看类似 `top` 的系统进程（支持搜索、多列排序与迷你进度条）、各算力卡的显存 / HBM 占用进程明细以及完整磁盘分区列表；日常轮询不采集进程列表，对服务器几乎无额外负载。算力卡进程会解析 **systemd 服务名 / 脚本名**，并提供带二次确认的“终止进程”。
 - **自定义名称与刷新间隔**：支持为本机和任意服务器设置自定义显示名称（IP / 连接地址固定附带且不可调整）；右上角支持 `10 秒 / 30 秒 / 60 秒 / 手动 / 自定义秒数` 刷新，页面隐藏时自动暂停轮询。
 - **卡片右上角可直接删除 / 移除服务器**：手动添加的会真正删除记录和私钥；来自 `~/.ssh/config` 的只从监控列表隐藏，不会改动原配置，可在“添加服务器”弹窗里恢复。
 - **认证失败的主机默认隐藏**，避免刷屏；可在“添加服务器”弹窗里修改或删除。
@@ -26,7 +26,7 @@
 https://github.com/xua123/dsh-resource-monitor
 ```
 
-或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.7.3.tgz`，用“本地文件”安装。
+或者从 [Releases](https://github.com/xua123/dsh-resource-monitor/releases) 下载 `dsh-resource-monitor-0.7.4.tgz`，用“本地文件”安装。
 
 ### 方式二：本地打包
 
@@ -35,12 +35,12 @@ cd path\to\dsh-resource-monitor
 npm run pack
 ```
 
-产物：`dist/dsh-resource-monitor-0.7.3.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
+产物：`dist/dsh-resource-monitor-0.7.4.tgz`。在 **设置 → 插件 → 安装 → 本地文件** 选择它即可。
 
 命令行安装（CLI 只做 `pnpm add`，不会自动加入 `dsh.profile.bundles`）：
 
 ```powershell
-dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.7.3.tgz --prefer-offline --ignore-scripts
+dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monitor-0.7.4.tgz --prefer-offline --ignore-scripts
 ```
 
 然后把 `dsh-resource-monitor` 追加到 profile `package.json` 的 `dsh.profile.bundles` 数组，重启 DSH。
@@ -115,7 +115,7 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 - **华为昇腾 NPU**：通过 `npu-smi info` 读取芯片型号、AICore 利用率、每张卡的显存/HBM 已用与占卡比例、温度及底部进程占用表；兼容 310P3 与 910B 两种三行输出格式。
 - **海光 DCU / AMD GPU**：通过 `hy-smi` / `rocm-smi` 读取每张 DCU 的利用率、VRAM 已用/总量与占卡比例；兼容带 ANSI 错误行和空字段的 `hy-smi --json` 输出，以及标准表格输出。
 - 每张算力卡都会显示 **平均利用率**（不再画进度条）、**功耗 实际 / 上限 W** 和 **显存占卡比例**。
-- **系统 Top 进程**：点击在线服务器卡片打开右侧详情抽屉时按需执行（远程 Linux 使用 `ps`，本机 Linux/macOS 使用 `ps`，Windows 使用轻量 `Get-Process`），纯只读展示。
+- **系统 Top 进程**：点击在线服务器卡片打开右侧详情抽屉时按需执行（远程 Linux 使用 `ps`，本机 Linux/macOS 使用 `ps`，Windows 使用轻量 `Get-Process`）。默认只读；显存进程表可发送 SIGTERM 终止进程。
 
 ### 平均利用率
 
@@ -176,7 +176,8 @@ dsh plugin --profile desktop add file:/absolute/path/to/dist/dsh-resource-monito
 
 ## 数据与安全
 
-- 远程只执行**只读** POSIX 命令（`hostname`、`/proc/stat`、`/proc/meminfo`、`df` 及只读硬件查询命令；点击详情抽屉时按需执行 `ps`），不写文件、不调用 sudo、不提供进程终止操作。
+- 远程日常采集只执行**只读** POSIX 命令（`hostname`、`/proc/stat`、`/proc/meminfo`、`df` 及只读硬件查询命令；点击详情抽屉时按需执行 `ps`），不写文件、不调用 sudo。
+- **终止进程**只允许当前详情列表中存在的 PID，需要页面写入 token，并弹出二次确认；只发送 SIGTERM，不做 `kill -9` 强杀。权限不足、进程已退出等失败原因会直接显示在弹窗里。
 - 手动添加的密码以明文保存在 `targets.json`（权限 `0600`）；私钥单独存文件（`0600`）。如果介意明文密码，请改用私钥认证。
 - 隐藏列表与别名分别保存在 `hidden.json`、`aliases.json`（权限 `0600`），删除手动目标时会同时删除其私钥文件。
 - 浏览器只能拿到 `id / name / host / port / username / auth / hasPassword / hasKey`，没有密码、口令或私钥路径。

@@ -10,6 +10,7 @@ import {
   parseNpuSmi,
   parseNvidiaApps,
 } from '../lib/gpu.js'
+import { friendlyProcName, parseProcInfo } from '../lib/collect-remote.js'
 import { parsePsOutput } from '../lib/processes.js'
 import { parseContainerInfo, parseNetDev, parseRemoteDetails, parseRemoteSnapshot } from '../lib/collect-remote.js'
 import { loadHostPrefs, loadTargetAliases, setHostPrefs, setTargetAlias } from '../lib/manual-targets.js'
@@ -199,4 +200,19 @@ test('parseContainerInfo parses cgroup v2 CPU and memory limits', () => {
   assert.equal(info.cpuLimit, 4)
   assert.equal(info.memLimitBytes, 16 * 1024 ** 3)
   assert.equal(parseContainerInfo('no\n'), null)
+})
+
+test('parseProcInfo resolves systemd units and script names', () => {
+  const info = parseProcInfo([
+    '@@PID 100',
+    'unit=llama-server.service',
+    'comm=python3',
+    'args=/usr/bin/python3 /opt/llama/server.py',
+    '@@PID 200',
+    'unit=',
+    'comm=python',
+    'args=python -m vllm.entrypoints.openai.api_server',
+  ].join('\n'))
+  assert.equal(friendlyProcName(info.get(100), 100), 'llama-server')
+  assert.equal(friendlyProcName(info.get(200), 200), 'vllm')
 })

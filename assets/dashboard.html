@@ -706,6 +706,23 @@
     </div>
   </div>
 
+  <div class="modal" id="kill-modal" hidden>
+    <div class="modal-panel" style="width:min(480px,100%)" role="dialog" aria-modal="true" aria-labelledby="kill-title">
+      <div class="modal-head">
+        <h2 id="kill-title">终止进程</h2>
+        <button class="icon-btn" id="kill-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <p id="kill-text" style="margin:0 0 10px;line-height:1.6"></p>
+        <p id="kill-error" style="margin:0 0 10px;color:var(--bad);font-size:12px;line-height:1.5" hidden></p>
+        <div class="actions">
+          <button class="btn" id="kill-cancel" type="button">取消</button>
+          <button class="btn primary" id="kill-confirm" type="button">终止进程</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="drawer-backdrop" id="detail-drawer" hidden>
     <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
       <div class="drawer-head">
@@ -769,6 +786,7 @@
     timer: null,
     ticker: null,
     drawerHostId: null,
+    killTarget: null,
     drawerTab: 'top',
     drawerData: null,
     drawerError: null,
@@ -820,6 +838,12 @@
     authPassword: document.getElementById('auth-password'),
     authKey: document.getElementById('auth-key'),
     aliasModal: document.getElementById('alias-modal'),
+    killModal: document.getElementById('kill-modal'),
+    killText: document.getElementById('kill-text'),
+    killError: document.getElementById('kill-error'),
+    killConfirm: document.getElementById('kill-confirm'),
+    killCancel: document.getElementById('kill-cancel'),
+    killClose: document.getElementById('kill-close'),
     aliasClose: document.getElementById('alias-close'),
     aliasForm: document.getElementById('alias-form'),
     aliasMsg: document.getElementById('alias-msg'),
@@ -1888,7 +1912,7 @@
     var table = el('table', 'proc-table')
     var thead = document.createElement('thead')
     var htr = document.createElement('tr')
-    ;['类型', '卡号 / 设备', 'PID', '进程名', '显存 / HBM 占用', '占该卡比例'].forEach(function (label) {
+    ;['类型', '卡号 / 设备', 'PID', '服务名', '显存 / HBM 占用', '占该卡比例', '操作'].forEach(function (label) {
       htr.appendChild(el('th', '', label))
     })
     thead.appendChild(htr)
@@ -1904,13 +1928,24 @@
       var devText = (p.deviceIndex !== null && p.deviceIndex !== undefined ? '#' + p.deviceIndex + ' ' : '') + (p.deviceName || '')
       tr.appendChild(el('td', '', devText || '—'))
       tr.appendChild(el('td', 'mono', p.pid))
-      var nameTd = el('td', 'cmd-cell mono', p.name)
-      nameTd.title = p.name
+      var nameTd = el('td', 'cmd-cell mono', p.serviceName || p.name)
+      nameTd.title = p.unit || p.name
       tr.appendChild(nameTd)
       tr.appendChild(el('td', 'mono', fmtBytes(p.memoryUsed)))
       var pctTd = document.createElement('td')
       pctTd.appendChild(miniMeter(p.memoryPercent, fmtPct(p.memoryPercent)))
       tr.appendChild(pctTd)
+      var actionTd = document.createElement('td')
+      var killBtn = el('button', 'btn', '终止')
+      killBtn.type = 'button'
+      killBtn.style.padding = '2px 8px'
+      killBtn.style.fontSize = '11px'
+      killBtn.addEventListener('click', function (event) {
+        event.stopPropagation()
+        openKillModal(p)
+      })
+      actionTd.appendChild(killBtn)
+      tr.appendChild(actionTd)
       tbody.appendChild(tr)
     })
     table.appendChild(tbody)
@@ -2667,13 +2702,72 @@
     scopeState.keys = []
     for (var i = 0; i < boxes.length; i += 1) boxes[i].checked = false
   })
+  function openKillModal(process) {
+    var pid = Number(process && process.pid)
+    if (!Number.isInteger(pid) || pid <= 0) return
+    var name = process.serviceName || process.name || ('PID ' + pid)
+    state.killTarget = { pid: pid, name: name }
+    els.killText.textContent = '确认终止「' + name + '」（PID ' + pid + '）？\n将向该进程发送 SIGTERM，正在运行的任务会被中断。'
+    els.killError.hidden = true
+    els.killError.textContent = ''
+    els.killConfirm.disabled = false
+    els.killConfirm.textContent = '终止进程'
+    els.killModal.hidden = false
+  }
+
+  function closeKillModal() {
+    state.killTarget = null
+    els.killModal.hidden = true
+  }
+
+  function confirmKill() {
+    var target = state.killTarget
+    var hostId = state.drawerHostId
+    if (!target || !hostId) return
+    els.killConfirm.disabled = true
+    els.killConfirm.textContent = '终止中…'
+    els.killError.hidden = true
+    fetch('api/hosts/' + encodeURIComponent(hostId) + '/kill', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
+      body: JSON.stringify({ pid: target.pid, signal: 'TERM' }),
+    })
+      .then(function (response) {
+        return response.json().catch(function () { return {} }).then(function (body) {
+          return { ok: response.ok, body: body }
+        })
+      })
+      .then(function (result) {
+        if (!result.ok || !result.body || result.body.ok !== true) {
+          throw new Error((result.body && result.body.error) || '终止失败')
+        }
+        closeKillModal()
+        showBanner('已向「' + target.name + '」（PID ' + target.pid + '）发送 SIGTERM')
+        loadDrawerDetails(true)
+      })
+      .catch(function (error) {
+        els.killError.hidden = false
+        els.killError.textContent = (error && error.message) || String(error)
+        els.killConfirm.disabled = false
+        els.killConfirm.textContent = '重试终止'
+      })
+  }
+
+  els.killConfirm.addEventListener('click', confirmKill)
+  els.killCancel.addEventListener('click', closeKillModal)
+  els.killClose.addEventListener('click', closeKillModal)
+  els.killModal.addEventListener('click', function (event) {
+    if (event.target === els.killModal) closeKillModal()
+  })
+
   els.modal.addEventListener('click', function (event) {
     if (event.target === els.modal) closeTargets()
   })
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
       closeAllSelects()
-      if (!els.drawerBackdrop.hidden) closeDrawer()
+      if (!els.killModal.hidden) closeKillModal()
+      else if (!els.drawerBackdrop.hidden) closeDrawer()
       else if (!els.aliasModal.hidden) closeAliasModal()
       else if (!els.modal.hidden) closeTargets()
     }
