@@ -24,6 +24,7 @@
   "files": [
     "lib",
     "assets",
+    "docs",
     "cordis.patch.yml",
     "icon.svg",
     "README.md"

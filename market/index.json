@@ -1,0 +1,96 @@
+{
+  "format": 1,
+  "title": {
+    "en": "DSH Resource Monitor Index",
+    "zh": "DSH 服务器资源监控索引"
+  },
+  "description": {
+    "en": "Server and accelerator monitoring bundles for DeepSeek Harness.",
+    "zh": "DeepSeek Harness 的服务器与算力资源监控插件索引。"
+  },
+  "metadata": {
+    "categories": {
+      "monitoring": {
+        "title": {
+          "en": "Monitoring",
+          "zh": "监控"
+        }
+      }
+    },
+    "labels": {
+      "ssh": {
+        "title": {
+          "en": "SSH",
+          "zh": "SSH"
+        }
+      },
+      "gpu": {
+        "title": {
+          "en": "GPU",
+          "zh": "GPU"
+        }
+      },
+      "npu": {
+        "title": {
+          "en": "NPU",
+          "zh": "NPU"
+        }
+      },
+      "dcu": {
+        "title": {
+          "en": "DCU",
+          "zh": "DCU"
+        }
+      }
+    }
+  },
+  "plugins": [
+    {
+      "name": "dsh-resource-monitor",
+      "title": {
+        "en": "Resource Monitor",
+        "zh": "服务器资源监控"
+      },
+      "description": {
+        "en": "Global and per-session CPU, memory, disk, GPU/NPU/DCU, power and process monitoring for local and SSH servers.",
+        "zh": "全局与会话级的本机/SSH 服务器资源监控：CPU、内存、磁盘、GPU/NPU/DCU、功耗与进程。"
+      },
+      "icon": "https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/icon.svg",
+      "author": "xua123",
+      "homepage": "https://github.com/xua123/dsh-resource-monitor",
+      "repository": {
+        "url": "https://github.com/xua123/dsh-resource-monitor"
+      },
+      "metadata": {
+        "category": "monitoring",
+        "keywords": [
+          "dsh",
+          "dsh-plugin",
+          "monitor",
+          "ssh",
+          "gpu",
+          "npu",
+          "dcu"
+        ],
+        "labels": [
+          "ssh",
+          "gpu",
+          "npu",
+          "dcu"
+        ]
+      },
+      "versions": [
+        {
+          "version": "0.7.4",
+          "publishTimestamp": 1795053061,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.2.1-rc.1"
+          }
+        }
+      ]
+    }
+  ]
+}
