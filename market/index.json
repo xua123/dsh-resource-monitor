@@ -46,7 +46,7 @@
   },
   "plugins": [
     {
-      "name": "dsh-server-resource-monitor",
+      "name": "dsh-server-lens",
       "title": {
         "en": "Resource Monitor",
         "zh": "服务器资源监控"
@@ -55,11 +55,11 @@
         "en": "Global and per-session CPU, memory, disk, GPU/NPU/DCU, power and process monitoring for local and SSH servers.",
         "zh": "全局与会话级的本机/SSH 服务器资源监控：CPU、内存、磁盘、GPU/NPU/DCU、功耗与进程。"
       },
-      "icon": "https://raw.githubusercontent.com/xua123/dsh-server-resource-monitor/main/icon.svg",
+      "icon": "https://raw.githubusercontent.com/xua123/dsh-server-lens/main/icon.svg",
       "author": "xua123",
-      "homepage": "https://github.com/xua123/dsh-server-resource-monitor",
+      "homepage": "https://github.com/xua123/dsh-server-lens",
       "repository": {
-        "url": "https://github.com/xua123/dsh-server-resource-monitor"
+        "url": "https://github.com/xua123/dsh-server-lens"
       },
       "metadata": {
         "category": "monitoring",
@@ -85,7 +85,7 @@
           "publishTimestamp": 1795066826,
           "source": {
             "type": "git",
-            "url": "https://github.com/xua123/dsh-server-resource-monitor.git",
+            "url": "https://github.com/xua123/dsh-server-lens.git",
             "commit": "6ec797b583e56583cf3bba6a202c98d8aa38211a"
           },
           "engines": {

@@ -816,7 +816,7 @@
   var workspaceSession = String(params.get('session') || '').trim()
   var workspacePath = String(params.get('path') || '').trim()
   var wsKey = String(params.get('ws') || 'default').trim() || 'default'
-  var wsStorageKey = 'dsh-server-resource-monitor:ws:' + wsKey
+  var wsStorageKey = 'dsh-server-lens:ws:' + wsKey
 
   var state = {
     data: null,
@@ -2853,13 +2853,13 @@
   })
   els.sortBy.addEventListener('change', function () {
     state.sortBy = els.sortBy.value || 'default'
-    try { localStorage.setItem('dsh-server-resource-monitor:sort', state.sortBy) } catch (e) {}
+    try { localStorage.setItem('dsh-server-lens:sort', state.sortBy) } catch (e) {}
     render()
   })
   els.viewToggle.addEventListener('click', function () {
     state.viewMode = state.viewMode === 'list' ? 'grid' : 'list'
     els.viewToggle.textContent = state.viewMode === 'list' ? '卡片视图' : '列表视图'
-    try { localStorage.setItem('dsh-server-resource-monitor:view', state.viewMode) } catch (e) {}
+    try { localStorage.setItem('dsh-server-lens:view', state.viewMode) } catch (e) {}
     render()
   })
 
@@ -2888,7 +2888,7 @@
 
   function applyIntervalMs(ms) {
     state.interval = Math.max(0, Number(ms) || 0)
-    try { localStorage.setItem('dsh-server-resource-monitor:interval', String(state.interval)) } catch (e) {}
+    try { localStorage.setItem('dsh-server-lens:interval', String(state.interval)) } catch (e) {}
     syncIntervalControls()
     render()
     schedule()
@@ -3130,9 +3130,9 @@
 
   var stored = null
   try {
-    stored = localStorage.getItem('dsh-server-resource-monitor:interval')
+    stored = localStorage.getItem('dsh-server-lens:interval')
       || localStorage.getItem('dsh-server-monitor:interval')
-    var savedView = localStorage.getItem('dsh-server-resource-monitor:view')
+    var savedView = localStorage.getItem('dsh-server-lens:view')
     if (savedView === 'list' || savedView === 'grid') {
       state.viewMode = savedView
       els.viewToggle.textContent = savedView === 'list' ? '卡片视图' : '列表视图'
@@ -3312,7 +3312,7 @@
   if (stored !== null && stored !== '') state.interval = Math.max(0, Number(stored) || 0)
   syncIntervalControls()
   try {
-    var savedSort = localStorage.getItem('dsh-server-resource-monitor:sort')
+    var savedSort = localStorage.getItem('dsh-server-lens:sort')
     if (savedSort === 'accel') savedSort = 'vram-avg'
     if (savedSort && Array.prototype.some.call(els.sortBy.options, function (option) { return option.value === savedSort })) {
       state.sortBy = savedSort

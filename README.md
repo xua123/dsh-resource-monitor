@@ -1,4 +1,4 @@
-# 服务器资源监控（dsh-server-resource-monitor）
+# 服务器资源监控（dsh-server-lens）
 
 在 DeepSeek Harness 左侧栏和会话工作区中查看本机与 SSH 服务器的实时资源：CPU、内存、磁盘、网络，以及 NVIDIA GPU / 华为昇腾 NPU / 海光 DCU 的利用率、显存、功耗和占用进程。
 
@@ -92,7 +92,7 @@
 2. 填入仓库地址：
 
 ```text
-https://github.com/xua123/dsh-server-resource-monitor
+https://github.com/xua123/dsh-server-lens
 ```
 
 3. 安装后**完全退出 DSH**（托盘 Quit），再重新启动。
@@ -100,13 +100,13 @@ https://github.com/xua123/dsh-server-resource-monitor
 ### 从 npm 安装
 
 ```bash
-dsh plugin --profile desktop add dsh-server-resource-monitor
+dsh plugin --profile desktop add dsh-server-lens
 ```
 
 ### 本地 tgz
 
 ```bash
-dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.1.0.tgz
+dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-lens-0.1.0.tgz
 ```
 
 要求：DSH `>= 0.2.1-rc.1`，Node `>= 20`。
@@ -131,8 +131,8 @@ Host gpu-01
 在 profile 的 `cordis.yml` / `cordis.patch.yml` 中：
 
 ```yaml
-- id: dsh-server-resource-monitor
-  name: dsh-server-resource-monitor
+- id: dsh-server-lens
+  name: dsh-server-lens
   config:
     refreshMs: 60000       # 刷新间隔，同时作为平均利用率窗口
     cacheMs: 2500          # 服务端快照缓存
@@ -182,7 +182,7 @@ DSH 目前没有官方插件索引，使用本仓库自带的 format 1 索引即
 索引地址：
 
 ```text
-https://raw.githubusercontent.com/xua123/dsh-server-resource-monitor/main/market/index.json
+https://raw.githubusercontent.com/xua123/dsh-server-lens/main/market/index.json
 ```
 
 使用方式：

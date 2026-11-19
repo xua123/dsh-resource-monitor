@@ -1,16 +1,16 @@
 {
-  "name": "dsh-server-resource-monitor",
+  "name": "dsh-server-lens",
   "version": "0.1.0",
   "description": "Server resource dashboard for DeepSeek Harness: live CPU / memory / disk / GPU / NPU / DCU usage, top processes and accelerator VRAM processes for the local host and servers from the local ~/.ssh/config.",
   "icon": "icon.svg",
   "author": "xua123",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xua123/dsh-server-resource-monitor.git"
+    "url": "git+https://github.com/xua123/dsh-server-lens.git"
   },
-  "homepage": "https://github.com/xua123/dsh-server-resource-monitor#readme",
+  "homepage": "https://github.com/xua123/dsh-server-lens#readme",
   "bugs": {
-    "url": "https://github.com/xua123/dsh-server-resource-monitor/issues"
+    "url": "https://github.com/xua123/dsh-server-lens/issues"
   },
   "type": "module",
   "main": "lib/index.js",
