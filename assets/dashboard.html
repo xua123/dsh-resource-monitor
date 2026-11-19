@@ -2215,6 +2215,7 @@
       head.appendChild(el('div', 'docker-name', container.name || container.shortId))
       var right = el('div', 'docker-head-actions')
       right.appendChild(dockerButton('启动', 'container', 'start', container, 'ok'))
+      right.appendChild(dockerButton('删除', 'container', 'rm', container, 'danger'))
       head.appendChild(right)
       card.appendChild(head)
       right.appendChild(attachDockerDetail(card, container))
@@ -2967,12 +2968,14 @@
       : (item.name || item.shortId)
     var labels = {
       rmi: '删除镜像',
+      rm: '删除容器',
       stop: '停止容器',
       restart: '重启容器',
       start: '启动容器',
     }
     var questions = {
       rmi: '确认删除镜像「' + name + '」？此操作不可恢复。',
+      rm: '确认删除容器「' + name + '」？容器及其可写层会被删除，此操作不可恢复。',
       stop: '确认停止容器「' + name + '」？正在运行的任务会被中断。',
       restart: '确认重启容器「' + name + '」？服务会短暂中断。',
       start: '确认启动容器「' + name + '」？',
@@ -3014,7 +3017,7 @@
         }
         closeDockerModal()
         state.dockerInspectCache = Object.create(null)
-        showBanner('已' + (target.action === 'rmi' ? '删除镜像' : target.action === 'stop' ? '停止容器' : target.action === 'restart' ? '重启容器' : '启动容器') + '「' + target.name + '」')
+        showBanner('已' + (target.action === 'rmi' ? '删除镜像' : target.action === 'rm' ? '删除容器' : target.action === 'stop' ? '停止容器' : target.action === 'restart' ? '重启容器' : '启动容器') + '「' + target.name + '」')
         loadDrawerDetails(true)
       })
       .catch(function (error) {

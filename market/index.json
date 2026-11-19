@@ -55,11 +55,11 @@
         "en": "Global and per-session CPU, memory, disk, GPU/NPU/DCU, power and process monitoring for local and SSH servers.",
         "zh": "全局与会话级的本机/SSH 服务器资源监控：CPU、内存、磁盘、GPU/NPU/DCU、功耗与进程。"
       },
-      "icon": "https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/icon.svg",
+      "icon": "https://raw.githubusercontent.com/xua123/dsh-server-resource-monitor/main/icon.svg",
       "author": "xua123",
-      "homepage": "https://github.com/xua123/dsh-resource-monitor",
+      "homepage": "https://github.com/xua123/dsh-server-resource-monitor",
       "repository": {
-        "url": "https://github.com/xua123/dsh-resource-monitor"
+        "url": "https://github.com/xua123/dsh-server-resource-monitor"
       },
       "metadata": {
         "category": "monitoring",
@@ -81,8 +81,8 @@
       },
       "versions": [
         {
-          "version": "0.9.8",
-          "publishTimestamp": 1795064940,
+          "version": "0.9.9",
+          "publishTimestamp": 1795065554,
           "source": {
             "type": "npm"
           },

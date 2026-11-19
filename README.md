@@ -92,7 +92,7 @@
 2. 填入仓库地址：
 
 ```text
-https://github.com/xua123/dsh-resource-monitor
+https://github.com/xua123/dsh-server-resource-monitor
 ```
 
 3. 安装后**完全退出 DSH**（托盘 Quit），再重新启动。
@@ -106,7 +106,7 @@ dsh plugin --profile desktop add dsh-server-resource-monitor
 ### 本地 tgz
 
 ```bash
-dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.9.8.tgz
+dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.9.9.tgz
 ```
 
 要求：DSH `>= 0.2.1-rc.1`，Node `>= 20`。
@@ -182,7 +182,7 @@ DSH 目前没有官方插件索引，使用本仓库自带的 format 1 索引即
 索引地址：
 
 ```text
-https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/market/index.json
+https://raw.githubusercontent.com/xua123/dsh-server-resource-monitor/main/market/index.json
 ```
 
 使用方式：
@@ -191,7 +191,7 @@ https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/market/index.
 2. 添加索引 URL；
 3. 选择「服务器资源监控」安装。
 
-当前索引使用 npm 版本 `0.9.8`。
+当前索引使用 npm 版本 `0.9.9`。
 
 ## License
 
