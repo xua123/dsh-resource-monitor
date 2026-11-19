@@ -3,7 +3,7 @@
 DSH 目前没有官方插件索引。本目录提供一份可直接使用的 **format 1** 索引：
 
 ```text
-https://raw.githubusercontent.com/xua123/dsh-server-overseer/main/market/index.json
+https://raw.githubusercontent.com/xua123/dsh-server-monitor/main/market/index.json
 ```
 
 ## 用户如何安装
@@ -24,7 +24,7 @@ https://raw.githubusercontent.com/xua123/dsh-server-overseer/main/market/index.j
 ```json
 {
   "type": "git",
-  "url": "https://github.com/xua123/dsh-server-overseer.git",
+  "url": "https://github.com/xua123/dsh-server-monitor.git",
   "commit": "<40 位 commit SHA>"
 }
 ```
