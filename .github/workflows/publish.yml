@@ -44,6 +44,16 @@ jobs:
           }
           "
 
+      - name: Verify npm credentials
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::NPM_TOKEN is not configured. Add an npm Automation token as a repository secret named NPM_TOKEN."
+            exit 1
+          fi
+          npm whoami
+
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:
