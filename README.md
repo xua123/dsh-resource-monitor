@@ -2,6 +2,8 @@
 
 A server resource monitor for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It shows local and SSH server usage in the DSH sidebar and in a per-session tab.
 
+![Resource monitor dashboard](docs/preview.png)
+
 [中文说明](#中文说明)
 
 ## Features
@@ -66,6 +68,14 @@ Open the **资源监控** tab in a conversation. The tab reads the session works
 | DCU | utilization, VRAM, temperature, power; `hy-smi` JSON/table compatible |
 | Containers | CPU/memory limits when running inside a container |
 
+### Process details
+
+![Process details](docs/preview-processes.png)
+
+### Accelerator memory
+
+![Accelerator memory details](docs/preview-memory.png)
+
 ## Process and Docker operations
 
 Process termination and Docker mutations require the page token and a confirmation dialog.
@@ -75,6 +85,10 @@ Process termination and Docker mutations require the page token and a confirmati
 - Container start, stop, restart and delete are confirmed.
 - Image deletion reports the containers that still reference the image.
 - Running containers must be stopped before they can be deleted.
+
+### Container details
+
+![Container details](docs/preview-docker.png)
 
 ## Security and privacy
 
