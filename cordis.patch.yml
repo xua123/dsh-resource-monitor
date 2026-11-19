@@ -1,8 +1,8 @@
-# dsh-server-lens bundle patch.
+# dsh-server-overseer bundle patch.
 #
 # The row loads this package's main entry as the host half. The `dsh.client`
 # declaration in package.json makes the web app load ./client as the browser
 # half (left-sidebar entry + global panel).
 - insert:
-    - id: dsh-server-lens
-      name: dsh-server-lens
+    - id: dsh-server-overseer
+      name: dsh-server-overseer
