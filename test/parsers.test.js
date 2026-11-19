@@ -171,7 +171,7 @@ test('setTargetAlias, loadTargetAliases, setHostPrefs and loadHostPrefs persist 
     assert.deepEqual({ ...loadTargetAliases() }, {})
 
     setHostPrefs('node-1', { pinned: true, tags: ['训练', 'A100', '训练'] })
-    assert.deepEqual({ ...loadHostPrefs() }, { 'node-1': { pinned: true, tags: ['训练', 'A100'] } })
+    assert.deepEqual({ ...loadHostPrefs() }, { 'node-1': { pinned: true, tags: ['训练', 'A100'], monitorPaused: false } })
     setHostPrefs('node-1', { pinned: false, tags: [] })
     assert.deepEqual({ ...loadHostPrefs() }, {})
   } finally {
