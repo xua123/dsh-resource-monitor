@@ -46,7 +46,7 @@
   },
   "plugins": [
     {
-      "name": "dsh-resource-monitor",
+      "name": "dsh-server-resource-monitor",
       "title": {
         "en": "Resource Monitor",
         "zh": "服务器资源监控"
@@ -81,8 +81,8 @@
       },
       "versions": [
         {
-          "version": "0.8.1",
-          "publishTimestamp": 1795058078,
+          "version": "0.9.0",
+          "publishTimestamp": 1795058406,
           "source": {
             "type": "npm"
           },

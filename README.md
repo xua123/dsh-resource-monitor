@@ -1,4 +1,4 @@
-# 服务器资源监控（dsh-resource-monitor）
+# 服务器资源监控（dsh-server-resource-monitor）
 
 在 DeepSeek Harness 左侧栏和会话工作区中查看本机与 SSH 服务器的实时资源：CPU、内存、磁盘、网络，以及 NVIDIA GPU / 华为昇腾 NPU / 海光 DCU 的利用率、显存、功耗和占用进程。
 
@@ -86,13 +86,13 @@ https://github.com/xua123/dsh-resource-monitor
 ### 从 npm 安装
 
 ```bash
-dsh plugin --profile desktop add dsh-resource-monitor
+dsh plugin --profile desktop add dsh-server-resource-monitor
 ```
 
 ### 本地 tgz
 
 ```bash
-dsh plugin --profile desktop add file:/absolute/path/to/dsh-resource-monitor-0.8.1.tgz
+dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.9.0.tgz
 ```
 
 要求：DSH `>= 0.2.1-rc.1`，Node `>= 20`。
@@ -117,8 +117,8 @@ Host gpu-01
 在 profile 的 `cordis.yml` / `cordis.patch.yml` 中：
 
 ```yaml
-- id: dsh-resource-monitor
-  name: dsh-resource-monitor
+- id: dsh-server-resource-monitor
+  name: dsh-server-resource-monitor
   config:
     refreshMs: 60000       # 刷新间隔，同时作为平均利用率窗口
     cacheMs: 2500          # 服务端快照缓存
@@ -177,7 +177,7 @@ https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/market/index.
 2. 添加上面的索引 URL；
 3. 在列表中选择「服务器资源监控」安装。
 
-索引条目使用 npm 版本 `0.8.1`；发布到 npm 后即可通过市场安装。若你维护第三方 DSH 插件索引，也可以把 `market/index.json` 里的条目合并进去。
+索引条目使用 npm 版本 `0.9.0`；发布到 npm 后即可通过市场安装。若你维护第三方 DSH 插件索引，也可以把 `market/index.json` 里的条目合并进去。
 
 ## 开发
 
