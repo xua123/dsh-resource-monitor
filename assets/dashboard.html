@@ -515,17 +515,17 @@
   .docker-sub { margin-top: 4px; font-size: 10.5px; color: var(--muted); word-break: break-all; line-height: 1.5; }
   .docker-meta { margin-top: 7px; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 10.5px; color: var(--text-2); }
   .docker-card .docker-actions { margin-top: 8px; }
-  .docker-arrow {
-    flex: none; width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 6px;
-    background: var(--card-soft); color: var(--text-2); cursor: pointer; font-size: 12px;
-    line-height: 1; transition: transform .15s ease, background .15s ease;
-  }
-  .docker-arrow:hover { background: var(--bg-soft); }
-  .docker-arrow.open { transform: rotate(180deg); }
+  .docker-detail-btn { min-width: 42px; }
   .docker-detail { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--border); display: grid; gap: 5px; }
   .docker-detail-row { display: flex; gap: 9px; font-size: 10.5px; line-height: 1.5; }
   .docker-detail-row .k { flex: none; width: 64px; color: var(--muted); }
   .docker-detail-row .v { color: var(--text-2); word-break: break-all; }
+  .docker-code {
+    margin: 0; padding: 7px 8px; max-height: 180px; overflow: auto;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--bg-soft);
+    color: var(--text-2); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px; line-height: 1.5; white-space: pre-wrap; word-break: break-all;
+  }
   .docker-section { margin-top: 12px; }
   .docker-section-toggle {
     width: 100%; display: flex; align-items: center; gap: 7px; padding: 8px 9px;
@@ -2068,6 +2068,15 @@
     return row
   }
 
+  function dockerInspectBlock(label, text) {
+    var row = el('div', 'docker-detail-row')
+    row.appendChild(el('span', 'k', label))
+    var value = el('span', 'v')
+    value.appendChild(el('pre', 'docker-code', text || '—'))
+    row.appendChild(value)
+    return row
+  }
+
   function dockerTime(value) {
     if (!value || String(value).startsWith('0001-')) return '—'
     var date = new Date(value)
@@ -2085,6 +2094,17 @@
     detail.appendChild(dockerInspectRow('容器 ID', data.id))
     detail.appendChild(dockerInspectRow('镜像', data.image))
     detail.appendChild(dockerInspectRow('启动命令', data.command))
+    detail.appendChild(dockerInspectRow('Entrypoint', (data.entrypoint || []).join(' ')))
+    detail.appendChild(dockerInspectRow('Cmd', (data.cmd || []).join(' ')))
+    detail.appendChild(dockerInspectBlock('环境变量', (data.env || []).join('\n')))
+    if (data.workingDir) detail.appendChild(dockerInspectRow('工作目录', data.workingDir))
+    if (data.user) detail.appendChild(dockerInspectRow('运行用户', data.user))
+    detail.appendChild(dockerInspectRow('特权模式', data.privileged ? '是' : '否'))
+    if (data.capAdd && data.capAdd.length) detail.appendChild(dockerInspectRow('CapAdd', data.capAdd.join('，')))
+    if (data.devices && data.devices.length) detail.appendChild(dockerInspectRow('设备', data.devices.join('，')))
+    if (data.runtime) detail.appendChild(dockerInspectRow('Runtime', data.runtime))
+    if (data.memory) detail.appendChild(dockerInspectRow('内存限制', fmtBytes(data.memory)))
+    if (data.nanoCpus) detail.appendChild(dockerInspectRow('CPU 限制', (data.nanoCpus / 1e9).toFixed(2) + ' 核'))
     detail.appendChild(dockerInspectRow('状态', data.status + (data.exitCode !== null ? '（退出码 ' + data.exitCode + '）' : '')))
     detail.appendChild(dockerInspectRow('创建时间', dockerTime(data.created)))
     if (data.startedAt) detail.appendChild(dockerInspectRow('启动时间', dockerTime(data.startedAt)))
@@ -2099,16 +2119,16 @@
   function attachDockerDetail(card, container) {
     var detail = el('div', 'docker-detail')
     detail.hidden = true
-    var arrow = el('button', 'docker-arrow', '▾')
-    arrow.type = 'button'
-    arrow.title = '展开容器详情'
-    arrow.setAttribute('aria-label', '展开容器详情')
-    arrow.addEventListener('click', function (event) {
+    var detailBtn = el('button', 'btn docker-action-btn docker-detail-btn', '详情')
+    detailBtn.type = 'button'
+    detailBtn.title = '展开容器启动参数'
+    detailBtn.setAttribute('aria-label', '展开容器启动参数')
+    detailBtn.addEventListener('click', function (event) {
       event.stopPropagation()
       var opening = detail.hidden
       detail.hidden = !opening
-      arrow.classList.toggle('open', opening)
-      arrow.title = opening ? '收起容器详情' : '展开容器详情'
+      detailBtn.textContent = opening ? '收起' : '详情'
+      detailBtn.title = opening ? '收起容器启动参数' : '展开容器启动参数'
       if (!opening) return
       var hostId = state.drawerHostId
       var key = String(hostId) + '|' + container.id
@@ -2139,7 +2159,7 @@
         })
     })
     card.appendChild(detail)
-    return arrow
+    return detailBtn
   }
 
   function renderDockerProcesses(data) {
