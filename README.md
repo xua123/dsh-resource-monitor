@@ -41,7 +41,7 @@
 | 海光 DCU | 型号、利用率、VRAM、温度、功耗；兼容 `hy-smi` JSON/表格 |
 | 算力卡进程 | 每张卡的 PID、服务名、显存占用、占卡比例 |
 | 进程 | 按需加载，支持搜索、排序、迷你进度条 |
-| 镜像 / 容器 | 镜像列表、运行中容器、已停止容器；支持容器启停/重启、镜像删除 |
+| 镜像 / 容器详情 | 镜像列表、运行中容器、已停止容器；支持容器启停/重启、镜像删除 |
 
 每张算力卡显示：
 
@@ -53,8 +53,8 @@
 
 点击在线服务器卡片打开右侧「占用详情」：
 
-- **进程**：按 CPU 排序的系统进程；
-- **显存占用进程**：算力卡上占用显存的进程；
+- **进程详情**：按 CPU 排序的系统进程；
+- **显存详情**：算力卡上占用显存的进程；
 - 服务名优先取 systemd unit / 脚本名，例如 `llama-server`、`vllm`、`hexocr`，不显示裸 PID 占位；
 - 每行提供「终止」按钮，弹出二次确认后发送 `SIGTERM`；
 - 只允许终止当前详情列表中存在的 PID；
@@ -62,7 +62,7 @@
 
 ## 镜像与容器
 
-「占用详情 → 镜像 / 容器」按三块展示：
+「占用详情 → 镜像 / 容器详情」按三块展示：
 
 1. **镜像列表**：镜像名:Tag、ID、大小、创建时间，支持删除；
 2. **运行中容器**：名称、镜像、状态、端口，支持停止/重启；
@@ -92,7 +92,7 @@ dsh plugin --profile desktop add dsh-resource-monitor
 ### 本地 tgz
 
 ```bash
-dsh plugin --profile desktop add file:/absolute/path/to/dsh-resource-monitor-0.8.0.tgz
+dsh plugin --profile desktop add file:/absolute/path/to/dsh-resource-monitor-0.8.1.tgz
 ```
 
 要求：DSH `>= 0.2.1-rc.1`，Node `>= 20`。
@@ -177,7 +177,7 @@ https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/market/index.
 2. 添加上面的索引 URL；
 3. 在列表中选择「服务器资源监控」安装。
 
-索引条目使用 npm 版本 `0.8.0`；发布到 npm 后即可通过市场安装。若你维护第三方 DSH 插件索引，也可以把 `market/index.json` 里的条目合并进去。
+索引条目使用 npm 版本 `0.8.1`；发布到 npm 后即可通过市场安装。若你维护第三方 DSH 插件索引，也可以把 `market/index.json` 里的条目合并进去。
 
 ## 开发
 
