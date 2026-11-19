@@ -37,7 +37,7 @@
 | 系统 | 主机名、系统版本、内核、运行时间、SSH 延迟 |
 | 容器 | 容器内 CPU / 内存 limit（检测到容器时） |
 | NVIDIA GPU | 型号、利用率、显存、温度、功耗 / 上限、Compute Capability |
-| 华为昇腾 NPU | 型号、AICore 利用率、显存/HBM、温度、功耗；兼容 310P3 / 910B |
+| 华为昇腾 NPU | 型号、AICore 利用率、显存、温度、功耗；兼容 310P3 / 910B |
 | 海光 DCU | 型号、利用率、VRAM、温度、功耗；兼容 `hy-smi` JSON/表格 |
 | 算力卡进程 | 每张卡的 PID、服务名、显存占用、占卡比例 |
 | 进程 | 按需加载，支持搜索、排序、迷你进度条 |
@@ -47,7 +47,7 @@
 
 - **平均利用率**：默认按刷新间隔做滚动平均，避免推理服务 burst 导致长期显示 0%；
 - **功耗**：实际 / 上限（W），例如 `59 W / 250 W`；
-- **显存/HBM**：已用 / 总量 + 占卡比例进度条。
+- **显存**：已用 / 总量 + 占卡比例进度条。
 
 ## 进程查看与终止
 
@@ -94,7 +94,7 @@ dsh plugin --profile desktop add dsh-server-resource-monitor
 ### 本地 tgz
 
 ```bash
-dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.9.2.tgz
+dsh plugin --profile desktop add file:/absolute/path/to/dsh-server-resource-monitor-0.9.3.tgz
 ```
 
 要求：DSH `>= 0.2.1-rc.1`，Node `>= 20`。
@@ -179,7 +179,7 @@ https://raw.githubusercontent.com/xua123/dsh-resource-monitor/main/market/index.
 2. 添加上面的索引 URL；
 3. 在列表中选择「服务器资源监控」安装。
 
-索引条目使用 npm 版本 `0.9.2`；发布到 npm 后即可通过市场安装。若你维护第三方 DSH 插件索引，也可以把 `market/index.json` 里的条目合并进去。
+索引条目使用 npm 版本 `0.9.3`；发布到 npm 后即可通过市场安装。若你维护第三方 DSH 插件索引，也可以把 `market/index.json` 里的条目合并进去。
 
 ## 开发
 

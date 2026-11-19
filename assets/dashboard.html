@@ -1946,7 +1946,7 @@
     var list = (data && data.acceleratorProcesses) || []
     var cards = (data && data.accelerators) || []
     var meta = el('div', 'proc-toolbar')
-    meta.appendChild(el('span', 'proc-meta', '已识别算力卡 ' + cards.length + ' 张 · 显存/HBM 占用进程 ' + list.length + ' 个'))
+    meta.appendChild(el('span', 'proc-meta', '已识别算力卡 ' + cards.length + ' 张 · 显存占用进程 ' + list.length + ' 个'))
     els.drawerBody.appendChild(meta)
 
     if (!cards.length) {
@@ -1954,7 +1954,7 @@
       return
     }
     if (!list.length) {
-      els.drawerBody.appendChild(el('div', 'target-empty', '当前没有正在占用显存 / HBM 的计算进程。'))
+      els.drawerBody.appendChild(el('div', 'target-empty', '当前没有正在占用显存的计算进程。'))
       return
     }
 
@@ -1962,7 +1962,7 @@
     var table = el('table', 'proc-table')
     var thead = document.createElement('thead')
     var htr = document.createElement('tr')
-    ;['类型', '卡号 / 设备', 'PID', '服务名', '显存 / HBM 占用', '占该卡比例', '操作'].forEach(function (label) {
+    ;['类型', '卡号 / 设备', 'PID', '服务名', '显存占用', '占该卡比例', '操作'].forEach(function (label) {
       htr.appendChild(el('th', '', label))
     })
     thead.appendChild(htr)

@@ -71,7 +71,7 @@ test('parseNpuSmi parses Huawei Ascend NPU cards and bottom process list', () =>
   assert.equal(cards[0].memoryPercent, 50)
   assert.equal(cards[0].temperature, 48)
   assert.equal(cards[0].powerW, 92.4)
-  assert.equal(cards[0].memoryLabel, 'HBM')
+  assert.equal(cards[0].memoryLabel, '显存')
 
   assert.equal(processes.length, 1)
   assert.equal(processes[0].type, 'npu')
