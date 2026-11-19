@@ -157,6 +157,11 @@
   button.btn.primary:hover { filter: brightness(1.06); }
   button.btn svg { width: 14px; height: 14px; }
   button.btn[disabled] { opacity: .55; cursor: default; }
+  button.btn.ok { color: #fff; background: var(--ok); border-color: transparent; }
+  button.btn.warn { color: #fff; background: #d9822b; border-color: transparent; }
+  button.btn.danger { color: #fff; background: var(--bad); border-color: transparent; }
+  button.btn.info { color: #fff; background: var(--accent); border-color: transparent; }
+  button.btn.ok:hover, button.btn.warn:hover, button.btn.danger:hover, button.btn.info:hover { filter: brightness(1.07); }
   .spin svg { animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -485,7 +490,7 @@
   }
   .proc-meta { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
-  .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: auto; background: var(--card); }
+  .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: auto; background: var(--card); max-height: 58vh; }
   table.proc-table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums; }
   table.proc-table th {
     position: sticky; top: 0; z-index: 1; background: var(--bg-soft);
@@ -501,7 +506,13 @@
   table.proc-table tr:last-child td { border-bottom: 0; }
   table.proc-table tbody tr:hover { background: var(--card-soft); }
   .docker-section-title { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--text-2); }
-  .docker-actions { display: inline-flex; align-items: center; gap: 6px; }
+  .docker-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .docker-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--card); }
+  .docker-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .docker-name { font-size: 12.5px; font-weight: 650; color: var(--text); word-break: break-all; }
+  .docker-sub { margin-top: 4px; font-size: 10.5px; color: var(--muted); word-break: break-all; line-height: 1.5; }
+  .docker-meta { margin-top: 7px; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 10.5px; color: var(--text-2); }
+  .docker-card .docker-actions { margin-top: 8px; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
   .cmd-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mini-meter { display: flex; align-items: center; gap: 7px; min-width: 92px; }
@@ -1980,10 +1991,10 @@
     els.drawerBody.appendChild(wrap)
   }
 
-  function dockerButton(label, kind, action, item) {
-    var button = el('button', 'btn', label)
+  function dockerButton(label, kind, action, item, tone) {
+    var button = el('button', 'btn' + (tone ? ' ' + tone : ''), label)
     button.type = 'button'
-    button.style.padding = '2px 8px'
+    button.style.padding = '3px 9px'
     button.style.fontSize = '11px'
     button.addEventListener('click', function (event) {
       event.stopPropagation()
@@ -1992,28 +2003,25 @@
     return button
   }
 
-  function dockerTable(headers, rows) {
-    var wrap = el('div', 'table-wrap')
-    var table = el('table', 'proc-table')
-    var thead = document.createElement('thead')
-    var htr = document.createElement('tr')
-    headers.forEach(function (label) { htr.appendChild(el('th', '', label)) })
-    thead.appendChild(htr)
-    table.appendChild(thead)
-    var tbody = document.createElement('tbody')
-    rows.forEach(function (cells) {
-      var tr = document.createElement('tr')
-      cells.forEach(function (cell) {
-        var td = document.createElement('td')
-        if (cell instanceof Node) td.appendChild(cell)
-        else td.textContent = cell == null || cell === '' ? '—' : String(cell)
-        tr.appendChild(td)
-      })
-      tbody.appendChild(tr)
-    })
-    table.appendChild(tbody)
-    wrap.appendChild(table)
-    return wrap
+  function dockerPortText(container) {
+    if (container.ports) return '端口 ' + container.ports
+    if (/host/i.test(container.networks || '')) return 'host 网络（使用宿主端口）'
+    return '未映射端口'
+  }
+
+  function dockerMeta(parts) {
+    var row = el('div', 'docker-meta')
+    parts.filter(Boolean).forEach(function (part) { row.appendChild(el('span', '', part)) })
+    return row
+  }
+
+  function dockerSection(title, items, renderItem, emptyText) {
+    els.drawerBody.appendChild(el('h4', 'docker-section-title', title))
+    if (!items.length) {
+      els.drawerBody.appendChild(el('div', 'target-empty', emptyText))
+      return
+    }
+    items.forEach(function (item) { els.drawerBody.appendChild(renderItem(item)) })
   }
 
   function renderDockerProcesses(data) {
@@ -2024,33 +2032,41 @@
     }
     els.drawerBody.appendChild(el('div', 'proc-meta', '镜像 ' + docker.images.length + ' 个 · 运行中容器 ' + docker.running.length + ' 个 · 停止容器 ' + docker.stopped.length + ' 个'))
 
-    els.drawerBody.appendChild(el('h4', 'docker-section-title', '镜像列表'))
-    els.drawerBody.appendChild(dockerTable(
-      ['镜像', 'ID', '大小', '创建时间', '操作'],
-      docker.images.map(function (image) {
-        var label = (image.repository || '<none>') + ':' + (image.tag || '<none>')
-        return [label, image.shortId, image.size, image.created, dockerButton('删除', 'image', 'rmi', image)]
-      }),
-    ))
+    dockerSection('镜像列表', docker.images, function (image) {
+      var card = el('div', 'docker-card')
+      var head = el('div', 'docker-card-head')
+      head.appendChild(el('div', 'docker-name', (image.repository || '<none>') + ':' + (image.tag || '<none>')))
+      head.appendChild(dockerButton('删除', 'image', 'rmi', image, 'danger'))
+      card.appendChild(head)
+      card.appendChild(el('div', 'docker-sub', 'ID ' + image.shortId))
+      card.appendChild(dockerMeta(['大小 ' + image.size, '创建 ' + image.created]))
+      return card
+    }, '没有镜像。')
 
-    els.drawerBody.appendChild(el('h4', 'docker-section-title', '运行中的容器'))
-    els.drawerBody.appendChild(dockerTable(
-      ['名称', '镜像', '状态', '端口', '操作'],
-      docker.running.map(function (container) {
-        var actions = el('span', 'docker-actions')
-        actions.appendChild(dockerButton('停止', 'container', 'stop', container))
-        actions.appendChild(dockerButton('重启', 'container', 'restart', container))
-        return [container.name, container.image, container.status, container.ports, actions]
-      }),
-    ))
+    dockerSection('运行中的容器', docker.running, function (container) {
+      var card = el('div', 'docker-card')
+      var head = el('div', 'docker-card-head')
+      head.appendChild(el('div', 'docker-name', container.name || container.shortId))
+      var actions = el('span', 'docker-actions')
+      actions.appendChild(dockerButton('停止', 'container', 'stop', container, 'warn'))
+      actions.appendChild(dockerButton('重启', 'container', 'restart', container, 'info'))
+      head.appendChild(actions)
+      card.appendChild(head)
+      card.appendChild(el('div', 'docker-sub', container.image))
+      card.appendChild(dockerMeta([container.status, dockerPortText(container), container.networks ? '网络 ' + container.networks : '']))
+      return card
+    }, '没有运行中的容器。')
 
-    els.drawerBody.appendChild(el('h4', 'docker-section-title', '停止的容器'))
-    els.drawerBody.appendChild(dockerTable(
-      ['名称', '镜像', '状态', '端口', '操作'],
-      docker.stopped.map(function (container) {
-        return [container.name, container.image, container.status, container.ports, dockerButton('启动', 'container', 'start', container)]
-      }),
-    ))
+    dockerSection('停止的容器', docker.stopped, function (container) {
+      var card = el('div', 'docker-card')
+      var head = el('div', 'docker-card-head')
+      head.appendChild(el('div', 'docker-name', container.name || container.shortId))
+      head.appendChild(dockerButton('启动', 'container', 'start', container, 'ok'))
+      card.appendChild(head)
+      card.appendChild(el('div', 'docker-sub', container.image))
+      card.appendChild(dockerMeta([container.status, dockerPortText(container), container.networks ? '网络 ' + container.networks : '']))
+      return card
+    }, '没有停止的容器。')
   }
 
   function renderHwDetails(entry, data) {
