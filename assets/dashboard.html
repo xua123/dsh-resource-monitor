@@ -508,8 +508,10 @@
   .docker-section-title { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--text-2); }
   .docker-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .docker-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--card); }
-  .docker-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-  .docker-name { font-size: 12.5px; font-weight: 650; color: var(--text); word-break: break-all; }
+  .docker-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .docker-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 650; color: var(--text); word-break: break-all; }
+  .docker-head-actions { display: flex; align-items: center; gap: 6px; flex: none; margin-left: auto; }
+  button.btn.docker-action-btn { padding: 1px 8px; height: 22px; font-size: 10.5px; line-height: 18px; border-radius: 6px; }
   .docker-sub { margin-top: 4px; font-size: 10.5px; color: var(--muted); word-break: break-all; line-height: 1.5; }
   .docker-meta { margin-top: 7px; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 10.5px; color: var(--text-2); }
   .docker-card .docker-actions { margin-top: 8px; }
@@ -524,6 +526,15 @@
   .docker-detail-row { display: flex; gap: 9px; font-size: 10.5px; line-height: 1.5; }
   .docker-detail-row .k { flex: none; width: 64px; color: var(--muted); }
   .docker-detail-row .v { color: var(--text-2); word-break: break-all; }
+  .docker-section { margin-top: 12px; }
+  .docker-section-toggle {
+    width: 100%; display: flex; align-items: center; gap: 7px; padding: 8px 9px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--card-soft);
+    color: var(--text-2); font: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer; text-align: left;
+  }
+  .docker-section-toggle:hover { background: var(--bg-soft); }
+  .docker-section-toggle .arrow { width: 12px; color: var(--muted); font-size: 10px; }
+  .docker-section-body { margin-top: 8px; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
   .cmd-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mini-meter { display: flex; align-items: center; gap: 7px; min-width: 92px; }
@@ -831,6 +842,7 @@
     killTarget: null,
     dockerTarget: null,
     dockerInspectCache: Object.create(null),
+    dockerSections: { images: false, running: false, stopped: false },
     drawerTab: 'top',
     drawerData: null,
     drawerError: null,
@@ -1765,6 +1777,7 @@
     state.drawerData = null
     state.drawerError = null
     state.procFilter = ''
+    state.dockerSections = { images: false, running: false, stopped: false }
     els.drawerBackdrop.hidden = false
     document.body.style.overflow = 'hidden'
     updateDrawerHeader(entry)
@@ -2004,10 +2017,8 @@
   }
 
   function dockerButton(label, kind, action, item, tone) {
-    var button = el('button', 'btn' + (tone ? ' ' + tone : ''), label)
+    var button = el('button', 'btn docker-action-btn' + (tone ? ' ' + tone : ''), label)
     button.type = 'button'
-    button.style.padding = '3px 9px'
-    button.style.fontSize = '11px'
     button.addEventListener('click', function (event) {
       event.stopPropagation()
       openDockerAction(kind, action, item)
@@ -2027,13 +2038,27 @@
     return row
   }
 
-  function dockerSection(title, items, renderItem, emptyText) {
-    els.drawerBody.appendChild(el('h4', 'docker-section-title', title))
-    if (!items.length) {
-      els.drawerBody.appendChild(el('div', 'target-empty', emptyText))
-      return
-    }
-    items.forEach(function (item) { els.drawerBody.appendChild(renderItem(item)) })
+  function dockerSection(key, title, items, renderItem, emptyText) {
+    var section = el('div', 'docker-section')
+    var open = state.dockerSections[key] === true
+    var toggle = el('button', 'docker-section-toggle')
+    toggle.type = 'button'
+    var arrow = el('span', 'arrow', open ? '▾' : '▸')
+    toggle.appendChild(arrow)
+    toggle.appendChild(el('span', '', title + '（' + items.length + '）'))
+    var body = el('div', 'docker-section-body')
+    body.hidden = !open
+    if (!items.length) body.appendChild(el('div', 'target-empty', emptyText))
+    else items.forEach(function (item) { body.appendChild(renderItem(item)) })
+    toggle.addEventListener('click', function () {
+      var next = body.hidden
+      body.hidden = !next
+      arrow.textContent = next ? '▾' : '▸'
+      state.dockerSections[key] = next
+    })
+    section.appendChild(toggle)
+    section.appendChild(body)
+    els.drawerBody.appendChild(section)
   }
 
   function dockerInspectRow(label, value) {
@@ -2125,7 +2150,7 @@
     }
     els.drawerBody.appendChild(el('div', 'proc-meta', '镜像 ' + docker.images.length + ' 个 · 运行中容器 ' + docker.running.length + ' 个 · 停止容器 ' + docker.stopped.length + ' 个'))
 
-    dockerSection('镜像列表', docker.images, function (image) {
+    dockerSection('images', '镜像列表', docker.images, function (image) {
       var card = el('div', 'docker-card')
       var head = el('div', 'docker-card-head')
       head.appendChild(el('div', 'docker-name', (image.repository || '<none>') + ':' + (image.tag || '<none>')))
@@ -2136,28 +2161,32 @@
       return card
     }, '没有镜像。')
 
-    dockerSection('运行中的容器', docker.running, function (container) {
+    dockerSection('running', '运行中的容器', docker.running, function (container) {
       var card = el('div', 'docker-card')
       var head = el('div', 'docker-card-head')
       head.appendChild(el('div', 'docker-name', container.name || container.shortId))
       var actions = el('span', 'docker-actions')
       actions.appendChild(dockerButton('停止', 'container', 'stop', container, 'warn'))
       actions.appendChild(dockerButton('重启', 'container', 'restart', container, 'info'))
-      head.appendChild(actions)
+      var right = el('div', 'docker-head-actions')
+      right.appendChild(actions)
+      head.appendChild(right)
       card.appendChild(head)
-      head.appendChild(attachDockerDetail(card, container))
+      right.appendChild(attachDockerDetail(card, container))
       card.appendChild(el('div', 'docker-sub', container.image))
       card.appendChild(dockerMeta([container.status, dockerPortText(container), container.networks ? '网络 ' + container.networks : '']))
       return card
     }, '没有运行中的容器。')
 
-    dockerSection('停止的容器', docker.stopped, function (container) {
+    dockerSection('stopped', '停止的容器', docker.stopped, function (container) {
       var card = el('div', 'docker-card')
       var head = el('div', 'docker-card-head')
       head.appendChild(el('div', 'docker-name', container.name || container.shortId))
-      head.appendChild(dockerButton('启动', 'container', 'start', container, 'ok'))
+      var right = el('div', 'docker-head-actions')
+      right.appendChild(dockerButton('启动', 'container', 'start', container, 'ok'))
+      head.appendChild(right)
       card.appendChild(head)
-      head.appendChild(attachDockerDetail(card, container))
+      right.appendChild(attachDockerDetail(card, container))
       card.appendChild(el('div', 'docker-sub', container.image))
       card.appendChild(dockerMeta([container.status, dockerPortText(container), container.networks ? '网络 ' + container.networks : '']))
       return card
