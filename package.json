@@ -27,7 +27,8 @@
     "docs",
     "cordis.patch.yml",
     "icon.svg",
-    "README.md"
+    "README.md",
+    "README.zh-CN.md"
   ],
   "keywords": [
     "dsh",
