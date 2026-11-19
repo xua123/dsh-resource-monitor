@@ -81,12 +81,10 @@
       },
       "versions": [
         {
-          "version": "0.9.7",
-          "publishTimestamp": 1795063831,
+          "version": "0.9.8",
+          "publishTimestamp": 1795064940,
           "source": {
-            "type": "git",
-            "url": "https://github.com/xua123/dsh-resource-monitor.git",
-            "commit": "1fe1e89a4bafa83f7ffac1b084180e7ab165e1bb"
+            "type": "npm"
           },
           "engines": {
             "dsh": ">=0.2.1-rc.1"
