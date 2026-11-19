@@ -500,6 +500,8 @@
   }
   table.proc-table tr:last-child td { border-bottom: 0; }
   table.proc-table tbody tr:hover { background: var(--card-soft); }
+  .docker-section-title { margin: 14px 0 6px; font-size: 12px; font-weight: 650; color: var(--text-2); }
+  .docker-actions { display: inline-flex; align-items: center; gap: 6px; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
   .cmd-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mini-meter { display: flex; align-items: center; gap: 7px; min-width: 92px; }
@@ -706,6 +708,23 @@
     </div>
   </div>
 
+  <div class="modal" id="docker-modal" hidden>
+    <div class="modal-panel" style="width:min(480px,100%)" role="dialog" aria-modal="true" aria-labelledby="docker-title">
+      <div class="modal-head">
+        <h2 id="docker-title">Docker 操作</h2>
+        <button class="icon-btn" id="docker-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <p id="docker-text" style="margin:0 0 10px;line-height:1.6"></p>
+        <p id="docker-error" style="margin:0 0 10px;color:var(--bad);font-size:12px;line-height:1.5" hidden></p>
+        <div class="actions">
+          <button class="btn" id="docker-cancel" type="button">取消</button>
+          <button class="btn primary" id="docker-confirm" type="button">确认</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="kill-modal" hidden>
     <div class="modal-panel" style="width:min(480px,100%)" role="dialog" aria-modal="true" aria-labelledby="kill-title">
       <div class="modal-head">
@@ -741,9 +760,10 @@
         </div>
       </div>
       <div class="drawer-tabs" role="tablist">
-        <button class="tab-btn active" type="button" data-tab="top">Top 进程 <span class="tab-count" id="tab-count-top">0</span></button>
-        <button class="tab-btn" type="button" data-tab="vram">显存 / HBM 进程 <span class="tab-count" id="tab-count-vram">0</span></button>
-        <button class="tab-btn" type="button" data-tab="hw">加速卡与磁盘</button>
+        <button class="tab-btn active" type="button" data-tab="top">进程 <span class="tab-count" id="tab-count-top">0</span></button>
+        <button class="tab-btn" type="button" data-tab="vram">显存占用进程 <span class="tab-count" id="tab-count-vram">0</span></button>
+        <button class="tab-btn" type="button" data-tab="docker">镜像 / 容器</button>
+        <button class="tab-btn" type="button" data-tab="hw">磁盘占用</button>
       </div>
       <div class="drawer-body" id="drawer-body"></div>
     </aside>
@@ -787,6 +807,7 @@
     ticker: null,
     drawerHostId: null,
     killTarget: null,
+    dockerTarget: null,
     drawerTab: 'top',
     drawerData: null,
     drawerError: null,
@@ -844,6 +865,12 @@
     killConfirm: document.getElementById('kill-confirm'),
     killCancel: document.getElementById('kill-cancel'),
     killClose: document.getElementById('kill-close'),
+    dockerModal: document.getElementById('docker-modal'),
+    dockerText: document.getElementById('docker-text'),
+    dockerError: document.getElementById('docker-error'),
+    dockerConfirm: document.getElementById('docker-confirm'),
+    dockerCancel: document.getElementById('docker-cancel'),
+    dockerClose: document.getElementById('docker-close'),
     aliasClose: document.getElementById('alias-close'),
     aliasForm: document.getElementById('alias-form'),
     aliasMsg: document.getElementById('alias-msg'),
@@ -1138,7 +1165,7 @@
     var critical = !offline && !connecting && (hotAcc || Number(entry.disk && entry.disk.percent) >= 92 || Number(entry.memory && entry.memory.percent) >= 92)
     var node = el('article', 'card' + (offline ? ' offline' : '') + (connecting ? ' connecting' : '') + (entry.kind === 'local' ? ' local' : '') + (critical ? ' critical' : '') + (!offline && !connecting ? ' clickable' : ''))
     if (!offline && !connecting) {
-      node.title = '点击查看 Top 进程与显存占用详情'
+      node.title = '点击查看占用详情'
       node.addEventListener('click', function () {
         openDrawer(entry)
       })
@@ -1222,7 +1249,7 @@
     node.appendChild(head)
 
     if (connecting) {
-      var waiting = el('div', 'collecting', '正在通过 SSH 采集指标…')
+      var waiting = el('div', 'collecting', '正在加载服务器资源…')
       waiting.title = '来源：~/.ssh/config'
       node.appendChild(waiting)
     } else if (offline) {
@@ -1329,7 +1356,7 @@
     var spark = sparkline(entry)
     if (spark) foot.appendChild(spark)
     if (!offline && !connecting) {
-      foot.appendChild(el('span', 'card-detail-hint', '进程 / 详情 ›'))
+      foot.appendChild(el('span', 'card-detail-hint', '占用详情 ›'))
     }
     node.appendChild(foot)
     return node
@@ -1810,7 +1837,7 @@
     })
     search.appendChild(input)
     toolbar.appendChild(search)
-    toolbar.appendChild(el('span', 'proc-meta', '采样于 ' + fmtRelative(data.sampledAt) + ' · 共 ' + procs.length + ' 个 Top 进程'))
+    toolbar.appendChild(el('span', 'proc-meta', '采样于 ' + fmtRelative(data.sampledAt) + ' · 共 ' + procs.length + ' 个进程'))
     els.drawerBody.appendChild(toolbar)
 
     var filtered = procs.filter(function (p) {
@@ -1953,23 +1980,83 @@
     els.drawerBody.appendChild(wrap)
   }
 
+  function dockerButton(label, kind, action, item) {
+    var button = el('button', 'btn', label)
+    button.type = 'button'
+    button.style.padding = '2px 8px'
+    button.style.fontSize = '11px'
+    button.addEventListener('click', function (event) {
+      event.stopPropagation()
+      openDockerAction(kind, action, item)
+    })
+    return button
+  }
+
+  function dockerTable(headers, rows) {
+    var wrap = el('div', 'table-wrap')
+    var table = el('table', 'proc-table')
+    var thead = document.createElement('thead')
+    var htr = document.createElement('tr')
+    headers.forEach(function (label) { htr.appendChild(el('th', '', label)) })
+    thead.appendChild(htr)
+    table.appendChild(thead)
+    var tbody = document.createElement('tbody')
+    rows.forEach(function (cells) {
+      var tr = document.createElement('tr')
+      cells.forEach(function (cell) {
+        var td = document.createElement('td')
+        if (cell instanceof Node) td.appendChild(cell)
+        else td.textContent = cell == null || cell === '' ? '—' : String(cell)
+        tr.appendChild(td)
+      })
+      tbody.appendChild(tr)
+    })
+    table.appendChild(tbody)
+    wrap.appendChild(table)
+    return wrap
+  }
+
+  function renderDockerProcesses(data) {
+    var docker = (data && data.docker) || { available: false, images: [], running: [], stopped: [] }
+    if (!docker.available) {
+      els.drawerBody.appendChild(el('div', 'target-empty', '未检测到 Docker，或当前用户没有 Docker 权限。'))
+      return
+    }
+    els.drawerBody.appendChild(el('div', 'proc-meta', '镜像 ' + docker.images.length + ' 个 · 运行中容器 ' + docker.running.length + ' 个 · 停止容器 ' + docker.stopped.length + ' 个'))
+
+    els.drawerBody.appendChild(el('h4', 'docker-section-title', '镜像列表'))
+    els.drawerBody.appendChild(dockerTable(
+      ['镜像', 'ID', '大小', '创建时间', '操作'],
+      docker.images.map(function (image) {
+        var label = (image.repository || '<none>') + ':' + (image.tag || '<none>')
+        return [label, image.shortId, image.size, image.created, dockerButton('删除', 'image', 'rmi', image)]
+      }),
+    ))
+
+    els.drawerBody.appendChild(el('h4', 'docker-section-title', '运行中的容器'))
+    els.drawerBody.appendChild(dockerTable(
+      ['名称', '镜像', '状态', '端口', '操作'],
+      docker.running.map(function (container) {
+        var actions = el('span', 'docker-actions')
+        actions.appendChild(dockerButton('停止', 'container', 'stop', container))
+        actions.appendChild(dockerButton('重启', 'container', 'restart', container))
+        return [container.name, container.image, container.status, container.ports, actions]
+      }),
+    ))
+
+    els.drawerBody.appendChild(el('h4', 'docker-section-title', '停止的容器'))
+    els.drawerBody.appendChild(dockerTable(
+      ['名称', '镜像', '状态', '端口', '操作'],
+      docker.stopped.map(function (container) {
+        return [container.name, container.image, container.status, container.ports, dockerButton('启动', 'container', 'start', container)]
+      }),
+    ))
+  }
+
   function renderHwDetails(entry, data) {
     var cards = (data && data.accelerators) || (entry && entry.gpus) || []
     var mounts = (entry && entry.disk && entry.disk.mounts) || []
     var grid = el('div', 'hw-grid')
-
-    if (cards.length) {
-      cards.forEach(function (gpu, idx) {
-        var box = el('div', 'hw-box')
-        box.appendChild(renderAcceleratorRow(gpu, idx))
-        grid.appendChild(box)
-      })
-    } else {
-      var noAcc = el('div', 'hw-box')
-      noAcc.appendChild(el('h4', '', '加速卡'))
-      noAcc.appendChild(el('div', 'target-empty', '未检测到 GPU / NPU / DCU 设备。'))
-      grid.appendChild(noAcc)
-    }
 
     var diskBox = el('div', 'hw-box')
     diskBox.appendChild(el('h4', '', '磁盘挂载分区（' + mounts.length + '）'))
@@ -1998,6 +2085,7 @@
     var entry = findEntryById(state.drawerHostId)
     if (state.drawerTab === 'top') renderTopProcesses(state.drawerData)
     else if (state.drawerTab === 'vram') renderVramProcesses(state.drawerData)
+    else if (state.drawerTab === 'docker') renderDockerProcesses(state.drawerData)
     else renderHwDetails(entry, state.drawerData)
   }
 
@@ -2702,6 +2790,76 @@
     scopeState.keys = []
     for (var i = 0; i < boxes.length; i += 1) boxes[i].checked = false
   })
+  function openDockerAction(kind, action, item) {
+    var name = kind === 'image'
+      ? ((item.repository || '<none>') + ':' + (item.tag || '<none>'))
+      : (item.name || item.shortId)
+    var labels = {
+      rmi: '删除镜像',
+      stop: '停止容器',
+      restart: '重启容器',
+      start: '启动容器',
+    }
+    var questions = {
+      rmi: '确认删除镜像「' + name + '」？此操作不可恢复。',
+      stop: '确认停止容器「' + name + '」？正在运行的任务会被中断。',
+      restart: '确认重启容器「' + name + '」？服务会短暂中断。',
+      start: '确认启动容器「' + name + '」？',
+    }
+    state.dockerTarget = { kind: kind, action: action, target: item.id, name: name }
+    els.dockerText.textContent = questions[action] || ('确认执行「' + action + '」？')
+    els.dockerError.hidden = true
+    els.dockerError.textContent = ''
+    els.dockerConfirm.disabled = false
+    els.dockerConfirm.textContent = labels[action] || '确认'
+    els.dockerModal.hidden = false
+  }
+
+  function closeDockerModal() {
+    state.dockerTarget = null
+    els.dockerModal.hidden = true
+  }
+
+  function confirmDockerAction() {
+    var target = state.dockerTarget
+    var hostId = state.drawerHostId
+    if (!target || !hostId) return
+    els.dockerConfirm.disabled = true
+    els.dockerConfirm.textContent = '执行中…'
+    els.dockerError.hidden = true
+    fetch('api/hosts/' + encodeURIComponent(hostId) + '/docker', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-monitor-token': writeToken },
+      body: JSON.stringify({ action: target.action, kind: target.kind, target: target.target }),
+    })
+      .then(function (response) {
+        return response.json().catch(function () { return {} }).then(function (body) {
+          return { ok: response.ok, body: body }
+        })
+      })
+      .then(function (result) {
+        if (!result.ok || !result.body || result.body.ok !== true) {
+          throw new Error((result.body && result.body.error) || 'Docker 操作失败')
+        }
+        closeDockerModal()
+        showBanner('已' + (target.action === 'rmi' ? '删除镜像' : target.action === 'stop' ? '停止容器' : target.action === 'restart' ? '重启容器' : '启动容器') + '「' + target.name + '」')
+        loadDrawerDetails(true)
+      })
+      .catch(function (error) {
+        els.dockerError.hidden = false
+        els.dockerError.textContent = (error && error.message) || String(error)
+        els.dockerConfirm.disabled = false
+        els.dockerConfirm.textContent = '重试'
+      })
+  }
+
+  els.dockerConfirm.addEventListener('click', confirmDockerAction)
+  els.dockerCancel.addEventListener('click', closeDockerModal)
+  els.dockerClose.addEventListener('click', closeDockerModal)
+  els.dockerModal.addEventListener('click', function (event) {
+    if (event.target === els.dockerModal) closeDockerModal()
+  })
+
   function openKillModal(process) {
     var pid = Number(process && process.pid)
     if (!Number.isInteger(pid) || pid <= 0) return
@@ -2766,7 +2924,8 @@
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
       closeAllSelects()
-      if (!els.killModal.hidden) closeKillModal()
+      if (!els.dockerModal.hidden) closeDockerModal()
+      else if (!els.killModal.hidden) closeKillModal()
       else if (!els.drawerBackdrop.hidden) closeDrawer()
       else if (!els.aliasModal.hidden) closeAliasModal()
       else if (!els.modal.hidden) closeTargets()

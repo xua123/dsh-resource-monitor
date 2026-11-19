@@ -11,6 +11,7 @@ import {
   parseNvidiaApps,
 } from '../lib/gpu.js'
 import { friendlyProcName, parseProcInfo } from '../lib/collect-remote.js'
+import { parseDockerSection } from '../lib/docker.js'
 import { parsePsOutput } from '../lib/processes.js'
 import { parseContainerInfo, parseNetDev, parseRemoteDetails, parseRemoteSnapshot } from '../lib/collect-remote.js'
 import { loadHostPrefs, loadTargetAliases, setHostPrefs, setTargetAlias } from '../lib/manual-targets.js'
@@ -215,4 +216,20 @@ test('parseProcInfo resolves systemd units and script names', () => {
   ].join('\n'))
   assert.equal(friendlyProcName(info.get(100), 100), 'llama-server')
   assert.equal(friendlyProcName(info.get(200), 200), 'vllm')
+})
+
+test('parseDockerSection keeps empty trailing fields', () => {
+  const docker = parseDockerSection([
+    'OK',
+    'repo\ttag\tabc\t10MB\tnow',
+    '::IMAGES_END',
+    'c1\tweb\tnginx\tUp 1 hour\t',
+    '::RUNNING_END',
+    'c2\told\tnginx\tExited (0)\t',
+  ].join('\n'))
+  assert.equal(docker.available, true)
+  assert.equal(docker.images.length, 1)
+  assert.equal(docker.running.length, 1)
+  assert.equal(docker.running[0].name, 'web')
+  assert.equal(docker.stopped.length, 1)
 })
