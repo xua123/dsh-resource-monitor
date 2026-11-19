@@ -1,10 +1,12 @@
 # dsh-server-monitor
 
+[English](#english) | [简体中文](#中文说明)
+
+## English
+
 A server resource monitor for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It shows local and SSH server usage in the DSH sidebar and in a per-session tab.
 
 ![Resource monitor dashboard](docs/preview.png)
-
-[中文说明](#中文说明)
 
 ## Features
 
