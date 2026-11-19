@@ -15,9 +15,13 @@
 
 ## 安装
 
+### npm
+
 ```bash
 dsh plugin --profile desktop add dsh-server-monitor
 ```
+
+### GitHub
 
 或在 **设置 → 插件 → 安装** 中填入：
 

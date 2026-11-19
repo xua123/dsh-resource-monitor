@@ -17,6 +17,12 @@ A server resource monitor for [DeepSeek Harness](https://github.com/deepseek-ai/
 
 ## Install
 
+### npm
+
+```bash
+dsh plugin --profile desktop add dsh-server-monitor
+```
+
 ### GitHub
 
 1. Open **Settings → Plugins → Install**.
